@@ -26,6 +26,7 @@ compile_commands.json
 examples/example-hot-reload-lib-exports.h
 _deps
 *.ppm
+*.exe
 
 # User-specific files
 *.suo
