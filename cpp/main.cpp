@@ -13,7 +13,7 @@ int main()
 	for (int j = image_height - 1; j >= 0; --j)
 	{
 		auto end = std::chrono::high_resolution_clock::now();
-		std::cerr << "\rElapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ns, ";
+		std::cerr << "\rElapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms, ";
 		std::cerr << "Scanlines remaining: " << j << ' ' << std::flush;
 		for (int i = 0; i < image_width; ++i)
 		{
@@ -32,7 +32,7 @@ int main()
 	std::cerr << "\nDone.\n";
 
 	auto end = std::chrono::high_resolution_clock::now();
-	std::cerr << "Elapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ns\n";
+	std::cerr << "Elapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms\n";
 
 	return 0;
 }
