@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"math"
 )
 
@@ -86,9 +87,10 @@ func (v Vec3) UnitVector() Vec3 {
 type Point3 Vec3
 type Color Vec3
 
-func (c Color) String() string {
-	return fmt.Sprintf(
-		"%v %v %v",
+func (c Color) Write(out io.Writer) {
+	fmt.Fprintf(
+		out,
+		"%v %v %v\n",
 		int(float64(255.999) * c.E[0]),
 		int(float64(255.999) * c.E[1]),
 		int(float64(255.999) * c.E[2]),

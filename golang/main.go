@@ -21,7 +21,7 @@ func main() {
 			c.E[0] = float64(i) / (image_width - 1)
 			c.E[1] = float64(j) / (image_height - 1)
 			c.E[2] = 0.25
-			fmt.Printf("%v\n", c)
+			c.Write(os.Stdout)
 		}
 	}
 
