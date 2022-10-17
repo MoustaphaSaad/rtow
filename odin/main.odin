@@ -34,15 +34,12 @@ main :: proc() {
 		fmt.wprintf(stderr, "\rElapsed time: %v ms, ", time.duration_milliseconds(time.since(start)))
 		fmt.wprintf(stderr, "Scanlines remaining: %v", j)
 		for i in 0..<image_width {
-			r := f64(i) / (image_width - 1)
-			g := f64(j) / (image_height - 1)
-			b := 0.25
-
-			ir := int(255.999 * r)
-			ig := int(255.999 * g)
-			ib := int(255.999 * b)
-
-			fmt.wprintf(stdout, "%v %v %v\n", ir, ig, ib)
+			c := Color{
+				f64(i) / (image_width - 1),
+				f64(j) / (image_height - 1),
+				0.25,
+			}
+			write_color(stdout, c)
 		}
 	}
 
