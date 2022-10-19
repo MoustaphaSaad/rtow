@@ -10,6 +10,7 @@ add_executable(rtow
 	main.cpp
 	vec3.h
 	color.h
+	ray.h
 )
 
 target_compile_features(rtow PUBLIC cxx_std_17)
