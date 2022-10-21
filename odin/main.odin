@@ -7,7 +7,19 @@ import "core:bufio"
 import "core:io"
 import "core:math/linalg"
 
+hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> bool {
+	a := linalg.dot(r.Dir, r.Dir)
+	oc := r.Orig - center
+	b := 2 * linalg.dot(oc, r.Dir)
+	c := linalg.dot(oc, oc) - radius * radius
+	discriminant := b * b - 4 * a * c
+	return discriminant > 0
+}
+
 ray_color :: proc(r: Ray) -> Color {
+	if hit_sphere(Point3{0, 0, -1}, 0.5, r) {
+		return Color{1, 0, 0}
+	}
 	unit_direction := linalg.normalize(r.Dir)
 	t := 0.5 * (unit_direction.y + 1)
 	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
