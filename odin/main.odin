@@ -6,8 +6,9 @@ import "core:time"
 import "core:bufio"
 import "core:io"
 import "core:math/linalg"
+import "core:math"
 
-hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> bool {
+hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
 	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
@@ -28,15 +29,21 @@ hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> bool {
 	b := 2 * linalg.dot(oc, r.Dir)
 	c := linalg.dot(oc, oc) - radius * radius
 	discriminant := b * b - 4 * a * c
-	return discriminant > 0
+	if discriminant < 0 {
+		return -1
+	} else {
+		return (-b - math.sqrt(discriminant)) / (2*a);
+	}
 }
 
 ray_color :: proc(r: Ray) -> Color {
-	if hit_sphere(Point3{0, 0, -1}, 0.5, r) {
-		return Color{1, 0, 0}
+	t := hit_sphere(Point3{0, 0, -1}, 0.5, r)
+	if t > 0 {
+		N := linalg.normalize(ray_at(r, t) - Point3{0, 0, -1})
+		return 0.5 * (N + Vec3{1, 1, 1})
 	}
 	unit_direction := linalg.normalize(r.Dir)
-	t := 0.5 * (unit_direction.y + 1)
+	t = 0.5 * (unit_direction.y + 1)
 	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
 }
 
