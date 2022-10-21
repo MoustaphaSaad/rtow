@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"time"
 )
 
-func hitSphere(center Point3, radius float64, r Ray) bool {
+func hitSphere(center Point3, radius float64, r Ray) float64 {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
 	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
@@ -27,15 +28,21 @@ func hitSphere(center Point3, radius float64, r Ray) bool {
 	b := 2 * oc.Dot(r.Dir)
 	c := oc.Dot(oc) - radius * radius
 	discriminant := b * b - 4 * a * c
-	return discriminant > 0
+	if discriminant < 0 {
+		return -1
+	} else {
+		return (-b - math.Sqrt(discriminant)) / (2 * a)
+	}
 }
 
 func rayColor(r Ray) Color {
-	if hitSphere(Point3{0, 0, -1}, 0.5, r) {
-		return Color{1, 0, 0}
+	t := hitSphere(Point3{0, 0, -1}, 0.5, r)
+	if t > 0 {
+		N := r.At(t).Sub(Vec3{0, 0, -1}).UnitVector()
+		return N.Add(Vec3{1, 1, 1}).Mul(0.5)
 	}
 	unitDirection := r.Dir.UnitVector()
-	t := 0.5 * (unitDirection.Y() + 1)
+	t = 0.5 * (unitDirection.Y() + 1)
 	startColor := Color{1, 1, 1}
 	endColor := Color{0.5, 0.7, 1}
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))

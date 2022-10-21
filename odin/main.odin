@@ -32,14 +32,14 @@ hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	if discriminant < 0 {
 		return -1
 	} else {
-		return (-b - math.sqrt(discriminant)) / (2*a);
+		return (-b - math.sqrt(discriminant)) / (2 * a)
 	}
 }
 
 ray_color :: proc(r: Ray) -> Color {
 	t := hit_sphere(Point3{0, 0, -1}, 0.5, r)
 	if t > 0 {
-		N := linalg.normalize(ray_at(r, t) - Point3{0, 0, -1})
+		N := linalg.normalize(ray_at(r, t) - Vec3{0, 0, -1})
 		return 0.5 * (N + Vec3{1, 1, 1})
 	}
 	unit_direction := linalg.normalize(r.Dir)
