@@ -23,15 +23,15 @@ func hitSphere(center Point3, radius float64, r Ray) float64 {
 	// and using the quadratic equation formula you have the discriminant = b^2 - 4ac, if it's positive we have 2 solutions
 	// if it's 0 we have one, if it's negative we have no solution
 
-	a := r.Dir.Dot(r.Dir)
+	a := r.Dir.LengthSquared()
 	oc := r.Orig.Sub(center)
-	b := 2 * oc.Dot(r.Dir)
-	c := oc.Dot(oc) - radius * radius
-	discriminant := b * b - 4 * a * c
+	halfB := oc.Dot(r.Dir)
+	c := oc.LengthSquared() - radius * radius
+	discriminant := halfB * halfB - a * c
 	if discriminant < 0 {
 		return -1
 	} else {
-		return (-b - math.Sqrt(discriminant)) / (2 * a)
+		return (-halfB - math.Sqrt(discriminant)) / a
 	}
 }
 
@@ -68,10 +68,13 @@ func main() {
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
 
+	var pixelOnly time.Duration
+
 	for j := imageHeight - 1; j >= 0; j-- {
 		fmt.Fprintf(os.Stderr, "\rElapsed time: %v, ", time.Since(start))
 		fmt.Fprintf(os.Stderr, "Scanlines remaining: %v ", j)
 		for i := 0; i < imageWidth; i++ {
+			start := time.Now()
 			u := float64(i) / float64(imageWidth - 1)
 			v := float64(j) / float64(imageHeight - 1)
 
@@ -80,10 +83,13 @@ func main() {
 				lowerLeftCorner.Add(horizontal.Mul(u)).Add(vertical.Mul(v)).Sub(origin),
 			}
 			pixelColor := rayColor(r)
+			pixelOnly += time.Since(start)
+
 			pixelColor.Write(os.Stdout)
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
 	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", time.Since(start))
+	fmt.Fprintf(os.Stderr, "Pixel time: %v\n", pixelOnly)
 }
