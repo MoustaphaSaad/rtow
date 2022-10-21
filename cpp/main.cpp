@@ -28,7 +28,7 @@ bool hit_sphere(const point3& center, double radius, const ray& r)
 	auto c = dot(oc, oc) - radius * radius;
 
 	auto discriminant = b * b - 4*a*c;
-	return discriminant < 0;
+	return discriminant > 0;
 }
 
 color ray_color(const ray& r)
