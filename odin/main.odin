@@ -24,15 +24,15 @@ hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	// and using the quadratic equation formula you have the discriminant = b^2 - 4ac, if it's positive we have 2 solutions
 	// if it's 0 we have one, if it's negative we have no solution
 
-	a := linalg.dot(r.Dir, r.Dir)
+	a := linalg.length2(r.Dir)
 	oc := r.Orig - center
-	b := 2 * linalg.dot(oc, r.Dir)
-	c := linalg.dot(oc, oc) - radius * radius
-	discriminant := b * b - 4 * a * c
+	half_b := linalg.dot(oc, r.Dir)
+	c := linalg.length2(oc) - radius * radius
+	discriminant := half_b * half_b - a * c
 	if discriminant < 0 {
 		return -1
 	} else {
-		return (-b - math.sqrt(discriminant)) / (2 * a)
+		return (-half_b - math.sqrt(discriminant)) / a
 	}
 }
 
@@ -83,6 +83,8 @@ main :: proc() {
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
 
+	pixel_only: time.Duration
+
 	for j := image_height - 1; j >= 0; j -= 1 {
 		fmt.wprintf(
 			stderr,
@@ -91,15 +93,19 @@ main :: proc() {
 		)
 		fmt.wprintf(stderr, "Scanlines remaining: %v", j)
 		for i in 0 ..< image_width {
+			start := time.now()
 			u := f64(i) / f64(image_width - 1)
 			v := f64(j) / f64(image_height - 1)
 
 			r := Ray{origin, (lower_left_corner + u * horizontal + v * vertical) - origin}
 			pixel_color := ray_color(r)
+			pixel_only += time.since(start)
+
 			write_color(stdout, pixel_color)
 		}
 	}
 
 	fmt.wprintf(stderr, "\nDone.\n")
 	fmt.wprintf(stderr, "Elapsed time: %v ms\n", time.duration_milliseconds(time.since(start)))
+	fmt.wprintf(stderr, "Pixel time: %v ms\n", time.duration_milliseconds(pixel_only))
 }
