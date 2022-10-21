@@ -1,0 +1,1 @@
+hyperfine --warmup 5 ".\odin\rtow.exe > odin-image.ppm" ".\golang\rtow.exe > go-image.ppm" ".\cpp\build\bin\Release\rtow.exe > cpp-image.ppm"
