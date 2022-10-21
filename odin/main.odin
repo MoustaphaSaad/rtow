@@ -8,6 +8,21 @@ import "core:io"
 import "core:math/linalg"
 
 hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> bool {
+	// sphere around arbitrary center equation is
+	// P is a point in 3D space
+	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
+	// if you replace P with (ray.origin + t * ray.direction) and simplify
+	// you get a quadratic equation
+	// t^2 * (ray.direction.x^2 + ray.direction.y^2 + ray.direction.z^2) +
+	// 2t * (ray.direction.x * (ray.origin.x - center.x) + ray.direction.y * (ray.origin.y - center.y) + ray.direction.z * (ray.origin.z - center.z)) +
+	// (ray.origin.x - center.x)^2 + (ray.origin.y - center.y)^2 + (ray.origin.z - center.z)^2 - radius^2 = 0
+	// which means that
+	// a = dot(ray.direction, ray.direction)
+	// b = dot((ray.origin - center), ray.direction)
+	// c = dot((ray.origin - center), (ray.origin - center)) - radius^2
+	// and using the quadratic equation formula you have the discriminant = b^2 - 4ac, if it's positive we have 2 solutions
+	// if it's 0 we have one, if it's negative we have no solution
+
 	a := linalg.dot(r.Dir, r.Dir)
 	oc := r.Orig - center
 	b := 2 * linalg.dot(oc, r.Dir)
