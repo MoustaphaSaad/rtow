@@ -22,19 +22,19 @@ double hit_sphere(const point3& center, double radius, const ray& r)
 	// and using the quadratic equation formula you have the discriminant = b^2 - 4ac, if it's positive we have 2 solutions
 	// if it's 0 we have one, if it's negative we have no solution
 
-	auto a = dot(r.direction(), r.direction());
+	auto a = r.direction().length_squared();
 	auto oc = r.origin() - center;
-	auto b = 2 * dot(r.direction(), oc);
-	auto c = dot(oc, oc) - radius * radius;
+	auto half_b = dot(r.direction(), oc);
+	auto c = oc.length_squared() - radius * radius;
 
-	auto discriminant = b * b - 4*a*c;
+	auto discriminant = half_b * half_b - a*c;
 	if (discriminant < 0)
 	{
 		return -1;
 	}
 	else
 	{
-		return (-b - sqrt(discriminant)) / (2*a);
+		return (-half_b - sqrt(discriminant)) / (a);
 	}
 }
 
@@ -71,6 +71,8 @@ int main()
 
 	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
+	std::chrono::duration<double, std::milli> pixel_only{};
+
 	for (int j = image_height - 1; j >= 0; --j)
 	{
 		auto end = std::chrono::high_resolution_clock::now();
@@ -78,10 +80,13 @@ int main()
 		std::cerr << "Scan lines remaining: " << j << ' ' << std::flush;
 		for (int i = 0; i < image_width; ++i)
 		{
+			auto start = std::chrono::high_resolution_clock::now();
 			auto u = double(i) / (image_width - 1);
 			auto v = double(j) / (image_height - 1);
 			ray r{origin, (lower_left_corner + u * horizontal + v * vertical) - origin};
 			auto pixel_color = ray_color(r);
+			auto end = std::chrono::high_resolution_clock::now();
+			pixel_only += end - start;
 			write_color(std::cout, pixel_color);
 		}
 	}
@@ -90,6 +95,7 @@ int main()
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::cerr << "Elapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms\n";
+	std::cerr << "Pixel time: " << pixel_only.count() << "ms\n";
 
 	return 0;
 }
