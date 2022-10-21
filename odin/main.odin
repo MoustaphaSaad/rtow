@@ -45,21 +45,22 @@ main :: proc() {
 	origin := Point3{0, 0, 0}
 	horizontal := Vec3{viewport_width, 0, 0}
 	vertical := Vec3{0, viewport_height, 0}
-	lower_left_corner := origin - horizontal /2 - vertical / 2 - Vec3{0, 0, focal_length}
+	lower_left_corner := origin - horizontal / 2 - vertical / 2 - Vec3{0, 0, focal_length}
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
 
 	for j := image_height - 1; j >= 0; j -= 1 {
-		fmt.wprintf(stderr, "\rElapsed time: %v ms, ", time.duration_milliseconds(time.since(start)))
+		fmt.wprintf(
+			stderr,
+			"\rElapsed time: %v ms, ",
+			time.duration_milliseconds(time.since(start)),
+		)
 		fmt.wprintf(stderr, "Scanlines remaining: %v", j)
-		for i in 0..<image_width {
+		for i in 0 ..< image_width {
 			u := f64(i) / f64(image_width - 1)
 			v := f64(j) / f64(image_height - 1)
 
-			r := Ray {
-				origin,
-				(lower_left_corner + u * horizontal + v * vertical) - origin,
-			}
+			r := Ray{origin, (lower_left_corner + u * horizontal + v * vertical) - origin}
 			pixel_color := ray_color(r)
 			write_color(stdout, pixel_color)
 		}
