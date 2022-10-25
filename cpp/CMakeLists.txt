@@ -11,6 +11,8 @@ add_executable(rtow
 	vec3.h
 	color.h
 	ray.h
+	hittable.h
+	sphere.h
 )
 
 target_compile_features(rtow PUBLIC cxx_std_17)
