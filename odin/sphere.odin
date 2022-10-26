@@ -33,7 +33,8 @@ sphere_hit :: proc(self: ^Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord,
 	hit = true
 	rec.t = root
 	rec.p = ray_at(r, rec.t)
-	rec.normal = (rec.p - self.center) / self.radius
+	outward_normal := (rec.p - self.center) / self.radius
+	hit_record_set_face_normal(&rec, r, outward_normal)
 	return
 }
 
