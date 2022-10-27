@@ -2,6 +2,14 @@ package main
 
 type HittableList []Hittable
 
+func (list *HittableList) Add(h Hittable) {
+	*list = append(*list, h)
+}
+
+func (list *HittableList) Clear() {
+	*list = nil
+}
+
 func (list HittableList) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
 	hit = false
 	closestSoFar := tMax
