@@ -13,6 +13,7 @@ add_executable(rtow
 	ray.h
 	hittable.h
 	sphere.h
+	hittable_list.h
 )
 
 target_compile_features(rtow PUBLIC cxx_std_17)
