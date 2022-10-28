@@ -36,14 +36,19 @@ hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	}
 }
 
-ray_color :: proc(r: Ray) -> Color {
-	t := hit_sphere(Point3{0, 0, -1}, 0.5, r)
-	if t > 0 {
-		N := linalg.normalize(ray_at(r, t) - Vec3{0, 0, -1})
-		return 0.5 * (N + Vec3{1, 1, 1})
+infinity := math.inf_f64(1)
+pi :: 3.1415926535897932385
+
+degrees_to_radians :: proc(degrees: f64) -> f64 {
+	return degrees * pi / 180
+}
+
+ray_color :: proc(r: Ray, world: Hittable) -> Color {
+	if rec, hit := world->hit(r, 0, infinity); hit {
+		return 0.5 * (rec.normal + Color{1, 1, 1})
 	}
 	unit_direction := linalg.normalize(r.Dir)
-	t = 0.5 * (unit_direction.y + 1)
+	t := 0.5 * (unit_direction.y + 1)
 	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
 }
 
@@ -70,6 +75,22 @@ main :: proc() {
 	aspect_ratio := 16.0 / 9.0
 	image_width := 400
 	image_height := int(f64(image_width) / aspect_ratio)
+
+	// World
+	sphere1 := Sphere{
+		center = Point3{0, 0, -1},
+		radius = 0.5,
+	}
+	sphere2 := Sphere{
+		center = Point3{0, -100.5, -1},
+		radius = 100,
+	}
+	world_list := [?]Hittable{
+		sphere_to_hittable(&sphere2),
+		sphere_to_hittable(&sphere1),
+	}
+	world_slice := world_list[:]
+	world := hittable_list_to_hittable(&world_slice)
 
 	// Camera
 	viewport_height := 2.0
@@ -98,7 +119,7 @@ main :: proc() {
 			v := f64(j) / f64(image_height - 1)
 
 			r := Ray{origin, (lower_left_corner + u * horizontal + v * vertical) - origin}
-			pixel_color := ray_color(r)
+			pixel_color := ray_color(r, world)
 			pixel_only += time.since(start)
 
 			write_color(stdout, pixel_color)
