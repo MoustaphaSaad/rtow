@@ -35,14 +35,19 @@ func hitSphere(center Point3, radius float64, r Ray) float64 {
 	}
 }
 
-func rayColor(r Ray) Color {
-	t := hitSphere(Point3{0, 0, -1}, 0.5, r)
-	if t > 0 {
-		N := r.At(t).Sub(Vec3{0, 0, -1}).UnitVector()
-		return N.Add(Vec3{1, 1, 1}).Mul(0.5)
+var infinity = math.Inf(1)
+const pi = 3.1415926535897932385
+
+func degressToRadians(degrees float64) float64 {
+	return degrees * pi / 180
+}
+
+func rayColor(r Ray, world Hittable) Color {
+	if rec, hit := world.Hit(r, 0, infinity); hit {
+		return rec.Normal.Add(Color{1, 1, 1}).Mul(0.5)
 	}
 	unitDirection := r.Dir.UnitVector()
-	t = 0.5 * (unitDirection.Y() + 1)
+	t := 0.5 * (unitDirection.Y() + 1)
 	startColor := Color{1, 1, 1}
 	endColor := Color{0.5, 0.7, 1}
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))
@@ -55,6 +60,11 @@ func main() {
 	var aspectRatio = 16.0 / 9.0
 	var imageWidth = 400
 	var imageHeight = int(float64(imageWidth) / aspectRatio)
+
+	// World
+	var world HittableList
+	world.Add(Sphere{Center: Point3{0, 0, -1}, Radius: 0.5})
+	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100})
 
 	// Camera
 	var viewportHeight = 2.0
@@ -82,7 +92,7 @@ func main() {
 				origin,
 				lowerLeftCorner.Add(horizontal.Mul(u)).Add(vertical.Mul(v)).Sub(origin),
 			}
-			pixelColor := rayColor(r)
+			pixelColor := rayColor(r, world)
 			pixelOnly += time.Since(start)
 
 			pixelColor.Write(os.Stdout)
