@@ -77,20 +77,17 @@ main :: proc() {
 	image_height := int(f64(image_width) / aspect_ratio)
 
 	// World
-	sphere1 := Sphere{
-		center = Point3{0, 0, -1},
-		radius = 0.5,
+	world_list := []Hittable{
+		sphere_to_hittable(&Sphere{
+			center = Point3{0, -100.5, -1},
+			radius = 100,
+		}),
+		sphere_to_hittable(&Sphere{
+			center = Point3{0, 0, -1},
+			radius = 0.5,
+		}),
 	}
-	sphere2 := Sphere{
-		center = Point3{0, -100.5, -1},
-		radius = 100,
-	}
-	world_list := [?]Hittable{
-		sphere_to_hittable(&sphere2),
-		sphere_to_hittable(&sphere1),
-	}
-	world_slice := world_list[:]
-	world := hittable_list_to_hittable(&world_slice)
+	world := hittable_list_to_hittable(&world_list)
 
 	// Camera
 	viewport_height := 2.0
