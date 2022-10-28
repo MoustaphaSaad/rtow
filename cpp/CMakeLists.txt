@@ -14,6 +14,7 @@ add_executable(rtow
 	hittable.h
 	sphere.h
 	hittable_list.h
+	rtweekend.h
 )
 
 target_compile_features(rtow PUBLIC cxx_std_17)
