@@ -85,12 +85,26 @@ func (v Vec3) UnitVector() Vec3 {
 type Point3 = Vec3
 type Color = Vec3
 
-func (c Color) Write(out io.Writer) {
+func Clamp(x, min, max float64) float64 {
+	if x < min { return min }
+	if x > max { return max }
+	return x
+}
+
+func (c Color) Write(out io.Writer, samplesPerPixel float64) {
+	r := c.X()
+	g := c.Y()
+	b := c.Z()
+
+	scale := 1.0 / samplesPerPixel
+	r *= scale
+	g *= scale
+	b *= scale
 	fmt.Fprintf(
 		out,
 		"%v %v %v\n",
-		int(float64(255.999) * c[0]),
-		int(float64(255.999) * c[1]),
-		int(float64(255.999) * c[2]),
+		int(256 * Clamp(r, 0.0, 0.999)),
+		int(256 * Clamp(g, 0.0, 0.999)),
+		int(256 * Clamp(b, 0.0, 0.999)),
 	)
 }

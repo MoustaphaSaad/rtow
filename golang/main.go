@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -60,6 +61,7 @@ func main() {
 	var aspectRatio = 16.0 / 9.0
 	var imageWidth = 400
 	var imageHeight = int(float64(imageWidth) / aspectRatio)
+	var samplesPerPixel = 100
 
 	// World
 	var world HittableList
@@ -67,14 +69,7 @@ func main() {
 	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100})
 
 	// Camera
-	var viewportHeight = 2.0
-	var viewportWidth = aspectRatio * viewportHeight
-	var focalLength = 1.0
-
-	var origin = Point3{0, 0, 0}
-	var horizontal = Vec3{viewportWidth, 0, 0}
-	var vertical = Vec3{0, viewportHeight, 0}
-	var lowerLeftCorner = origin.Sub(horizontal.Div(2)).Sub(vertical.Div(2)).Sub(Vec3{0, 0, focalLength})
+	cam := NewCamera()
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
 
@@ -85,17 +80,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Scanlines remaining: %v ", j)
 		for i := 0; i < imageWidth; i++ {
 			start := time.Now()
-			u := float64(i) / float64(imageWidth - 1)
-			v := float64(j) / float64(imageHeight - 1)
-
-			r := Ray{
-				origin,
-				lowerLeftCorner.Add(horizontal.Mul(u)).Add(vertical.Mul(v)).Sub(origin),
+			pixelColor := Color{0, 0, 0}
+			for s := 0; s < samplesPerPixel; s++ {
+				u := (float64(i) + rand.Float64()) / float64(imageWidth - 1)
+				v := (float64(j) + rand.Float64()) / float64(imageHeight - 1)
+				r := cam.ray(u, v)
+				pixelColor = pixelColor.Add(rayColor(r, world))
 			}
-			pixelColor := rayColor(r, world)
 			pixelOnly += time.Since(start)
 
-			pixelColor.Write(os.Stdout)
+			pixelColor.Write(os.Stdout, float64(samplesPerPixel))
 		}
 	}
 

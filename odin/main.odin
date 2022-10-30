@@ -7,6 +7,7 @@ import "core:bufio"
 import "core:io"
 import "core:math/linalg"
 import "core:math"
+import "core:math/rand"
 
 hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	// sphere around arbitrary center equation is
@@ -75,6 +76,7 @@ main :: proc() {
 	aspect_ratio := 16.0 / 9.0
 	image_width := 400
 	image_height := int(f64(image_width) / aspect_ratio)
+	samples_per_pixel := 100
 
 	// World
 	world_list := []Hittable{
@@ -90,14 +92,7 @@ main :: proc() {
 	world := hittable_list_to_hittable(&world_list)
 
 	// Camera
-	viewport_height := 2.0
-	viewport_width := aspect_ratio * viewport_height
-	focal_length := 1.0
-
-	origin := Point3{0, 0, 0}
-	horizontal := Vec3{viewport_width, 0, 0}
-	vertical := Vec3{0, viewport_height, 0}
-	lower_left_corner := origin - horizontal / 2 - vertical / 2 - Vec3{0, 0, focal_length}
+	cam := new_camera()
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
 
@@ -112,14 +107,15 @@ main :: proc() {
 		fmt.wprintf(stderr, "Scanlines remaining: %v", j)
 		for i in 0 ..< image_width {
 			start := time.now()
-			u := f64(i) / f64(image_width - 1)
-			v := f64(j) / f64(image_height - 1)
-
-			r := Ray{origin, (lower_left_corner + u * horizontal + v * vertical) - origin}
-			pixel_color := ray_color(r, world)
+			pixel_color := Color{0, 0, 0}
+			for s in 0 ..< samples_per_pixel {
+				u := (f64(i) + rand.float64()) / f64(image_width - 1)
+				v := (f64(j) + rand.float64()) / f64(image_height - 1)
+				r := camera_ray(cam, u, v)
+				pixel_color += ray_color(r, world)
+			}
 			pixel_only += time.since(start)
-
-			write_color(stdout, pixel_color)
+			write_color(stdout, pixel_color, f64(samples_per_pixel))
 		}
 	}
 
