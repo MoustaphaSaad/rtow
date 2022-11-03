@@ -62,6 +62,7 @@ func main() {
 	var imageWidth = 400
 	var imageHeight = int(float64(imageWidth) / aspectRatio)
 	var samplesPerPixel = 100
+	var raysCount = imageWidth * imageHeight * samplesPerPixel
 
 	// World
 	var world HittableList
@@ -96,4 +97,5 @@ func main() {
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
 	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", time.Since(start))
 	fmt.Fprintf(os.Stderr, "Pixel time: %v\n", pixelOnly)
+	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / pixelOnly.Seconds()) / 1000000)
 }

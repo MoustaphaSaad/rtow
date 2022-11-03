@@ -61,6 +61,7 @@ int main()
 	const int image_width = 400;
 	const int image_height = static_cast<int>(image_width / aspect_ratio);
 	const int samples_per_pixel = 100;
+	const size_t rays_count = image_width * image_height * samples_per_pixel;
 
 	// World
 	hittable_list world;
@@ -101,6 +102,7 @@ int main()
 	auto end = std::chrono::high_resolution_clock::now();
 	std::cerr << "Elapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms\n";
 	std::cerr << "Pixel time: " << pixel_only.count() << "ms\n";
+	std::cerr << "Ray Per Sec: " << (double(rays_count) / (double(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
 
 	return 0;
 }

@@ -77,6 +77,7 @@ main :: proc() {
 	image_width := 400
 	image_height := int(f64(image_width) / aspect_ratio)
 	samples_per_pixel := 100
+	rays_count := image_width * image_height * samples_per_pixel
 
 	// World
 	world_list := []Hittable{
@@ -122,4 +123,5 @@ main :: proc() {
 	fmt.wprintf(stderr, "\nDone.\n")
 	fmt.wprintf(stderr, "Elapsed time: %v ms\n", time.duration_milliseconds(time.since(start)))
 	fmt.wprintf(stderr, "Pixel time: %v ms\n", time.duration_milliseconds(pixel_only))
+	fmt.wprintf(stderr, "Ray Per Sec: %.2f MRays/Second\n", f64(rays_count) / time.duration_seconds(pixel_only) / 1000000)
 }
