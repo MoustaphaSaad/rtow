@@ -44,9 +44,14 @@ degrees_to_radians :: proc(degrees: f64) -> f64 {
 	return degrees * pi / 180
 }
 
-ray_color :: proc(r: Ray, world: Hittable) -> Color {
-	if rec, hit := world->hit(r, 0, infinity); hit {
-		return 0.5 * (rec.normal + Color{1, 1, 1})
+ray_color :: proc(r: Ray, world: Hittable, depth: int) -> Color {
+	if depth <= 0 {
+		return Color{}
+	}
+
+	if rec, hit := world->hit(r, 0.001, infinity); hit {
+		target := rec.p + rec.normal + random_in_hemisphere(rec.normal)
+		return 0.5 * ray_color(Ray{rec.p, target - rec.p}, world, depth - 1)
 	}
 	unit_direction := linalg.normalize(r.Dir)
 	t := 0.5 * (unit_direction.y + 1)
@@ -78,6 +83,7 @@ main :: proc() {
 	image_height := int(f64(image_width) / aspect_ratio)
 	samples_per_pixel := 100
 	rays_count := image_width * image_height * samples_per_pixel
+	max_depth := 50
 
 	// World
 	world_list := []Hittable{
@@ -113,7 +119,7 @@ main :: proc() {
 				u := (f64(i) + rand.float64()) / f64(image_width - 1)
 				v := (f64(j) + rand.float64()) / f64(image_height - 1)
 				r := camera_ray(cam, u, v)
-				pixel_color += ray_color(r, world)
+				pixel_color += ray_color(r, world, max_depth)
 			}
 			pixel_only += time.since(start)
 			write_color(stdout, pixel_color, f64(samples_per_pixel))
