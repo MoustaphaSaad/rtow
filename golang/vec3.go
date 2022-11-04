@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 )
 
 type Vec3 [3]float64
@@ -82,6 +83,43 @@ func (v Vec3) UnitVector() Vec3 {
 	return v.Div(v.Length())
 }
 
+func RandomDouble() float64 {
+	return rand.Float64()
+}
+
+func RandomDoubleInRange(min, max float64) float64 {
+	return min + RandomDouble() * (max - min)
+}
+
+func RandomVec3() Vec3 {
+	return Vec3{rand.Float64(), rand.Float64(), rand.Float64()}
+}
+
+func RandomVec3InRange(min, max float64) Vec3 {
+	return Vec3{RandomDoubleInRange(min, max), RandomDoubleInRange(min, max), RandomDoubleInRange(min, max)}
+}
+
+func RandomInUnitSphere() Vec3 {
+	for {
+		p := RandomVec3InRange(-1, 1)
+		if p.LengthSquared() >= 1 { continue }
+		return p
+	}
+}
+
+func RandomUnitVector() Vec3 {
+	return RandomInUnitSphere().UnitVector()
+}
+
+func RandomInHemisphere(normal Vec3) Vec3 {
+	inUnitSphere := RandomInUnitSphere()
+	if inUnitSphere.Dot(normal) > 0.0 {
+		return inUnitSphere
+	} else {
+		return inUnitSphere.Negate()
+	}
+}
+
 type Point3 = Vec3
 type Color = Vec3
 
@@ -97,9 +135,9 @@ func (c Color) Write(out io.Writer, samplesPerPixel float64) {
 	b := c.Z()
 
 	scale := 1.0 / samplesPerPixel
-	r *= scale
-	g *= scale
-	b *= scale
+	r = math.Sqrt(scale * r)
+	g = math.Sqrt(scale * g)
+	b = math.Sqrt(scale * b)
 	fmt.Fprintf(
 		out,
 		"%v %v %v\n",

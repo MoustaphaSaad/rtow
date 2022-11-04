@@ -43,9 +43,14 @@ func degressToRadians(degrees float64) float64 {
 	return degrees * pi / 180
 }
 
-func rayColor(r Ray, world Hittable) Color {
-	if rec, hit := world.Hit(r, 0, infinity); hit {
-		return rec.Normal.Add(Color{1, 1, 1}).Mul(0.5)
+func rayColor(r Ray, world Hittable, depth int) Color {
+	if depth <= 0 {
+		return Color{}
+	}
+
+	if rec, hit := world.Hit(r, 0.001, infinity); hit {
+		target := rec.P.Add(rec.Normal.Add(RandomUnitVector()))
+		return rayColor(Ray{rec.P, target.Sub(rec.P)}, world, depth - 1).Mul(0.5)
 	}
 	unitDirection := r.Dir.UnitVector()
 	t := 0.5 * (unitDirection.Y() + 1)
@@ -63,6 +68,7 @@ func main() {
 	var imageHeight = int(float64(imageWidth) / aspectRatio)
 	var samplesPerPixel = 100
 	var raysCount = imageWidth * imageHeight * samplesPerPixel
+	var maxDepth = 50
 
 	// World
 	var world HittableList
@@ -86,7 +92,7 @@ func main() {
 				u := (float64(i) + rand.Float64()) / float64(imageWidth - 1)
 				v := (float64(j) + rand.Float64()) / float64(imageHeight - 1)
 				r := cam.ray(u, v)
-				pixelColor = pixelColor.Add(rayColor(r, world))
+				pixelColor = pixelColor.Add(rayColor(r, world, maxDepth))
 			}
 			pixelOnly += time.Since(start)
 
