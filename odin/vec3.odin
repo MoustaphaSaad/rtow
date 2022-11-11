@@ -40,6 +40,11 @@ random_in_hemisphere :: proc(normal: Vec3) -> Vec3 {
 	}
 }
 
+vec3_near_zero :: proc(v: Vec3) -> bool {
+	s :: 1e-8
+	return (math.abs(v[0]) < s) && (math.abs(v[1]) < s) && (math.abs(v[2]) < s)
+}
+
 write_color :: proc(out: io.Writer, c: Color, samples_per_pixel: f64) {
 	r := c.r
 	g := c.g

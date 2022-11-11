@@ -50,6 +50,9 @@ ray_color :: proc(r: Ray, world: Hittable, depth: int) -> Color {
 	}
 
 	if rec, hit := world->hit(r, 0.001, infinity); hit {
+		if res, scattered := rec.mat->scatter(r, rec); scattered {
+			return res.attenuation * ray_color(res.scattered, world, depth - 1)
+		}
 		target := rec.p + rec.normal + random_in_hemisphere(rec.normal)
 		return 0.5 * ray_color(Ray{rec.p, target - rec.p}, world, depth - 1)
 	}
@@ -86,14 +89,31 @@ main :: proc() {
 	max_depth := 50
 
 	// World
+	material_ground := Lambertian{Color{0.8, 0.8, 0.0}}
+	material_center := Lambertian{Color{0.7, 0.3, 0.3}}
+	material_left := Metal{Color{0.8, 0.8, 0.8}, 0.3}
+	material_right := Metal{Color{0.8, 0.6, 0.2}, 1}
+
 	world_list := []Hittable{
 		sphere_to_hittable(&Sphere{
 			center = Point3{0, -100.5, -1},
 			radius = 100,
+			mat = to_material(&material_ground),
+		}),
+		sphere_to_hittable(&Sphere{
+			center = Point3{-1, 0, -1},
+			radius = 0.5,
+			mat = to_material(&material_left),
+		}),
+		sphere_to_hittable(&Sphere{
+			center = Point3{1, 0, -1},
+			radius = 0.5,
+			mat = to_material(&material_right),
 		}),
 		sphere_to_hittable(&Sphere{
 			center = Point3{0, 0, -1},
 			radius = 0.5,
+			mat = to_material(&material_center),
 		}),
 	}
 	world := hittable_list_to_hittable(&world_list)
