@@ -83,6 +83,15 @@ func (v Vec3) UnitVector() Vec3 {
 	return v.Div(v.Length())
 }
 
+func (v Vec3) NearZero() bool {
+	const s = 1e-8
+	return (math.Abs(v[0]) < s) && (math.Abs(v[1]) < s) && (math.Abs(v[2]) < s)
+}
+
+func (v Vec3) Reflect(normal Vec3) Vec3 {
+	return v.Sub(normal.Mul(v.Dot(normal) * 2))
+}
+
 func RandomDouble() float64 {
 	return rand.Float64()
 }

@@ -5,6 +5,7 @@ import "math"
 type Sphere struct {
 	Center Point3
 	Radius float64
+	Mat    Material
 }
 
 func (s Sphere) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
@@ -34,5 +35,6 @@ func (s Sphere) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
 	rec.P = r.At(rec.T)
 	outwardNormal := rec.P.Sub(s.Center).Div(s.Radius)
 	rec.setFaceNormal(r, outwardNormal)
+	rec.Mat = s.Mat
 	return
 }

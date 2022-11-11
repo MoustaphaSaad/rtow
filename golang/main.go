@@ -49,8 +49,10 @@ func rayColor(r Ray, world Hittable, depth int) Color {
 	}
 
 	if rec, hit := world.Hit(r, 0.001, infinity); hit {
-		target := rec.P.Add(rec.Normal.Add(RandomUnitVector()))
-		return rayColor(Ray{rec.P, target.Sub(rec.P)}, world, depth - 1).Mul(0.5)
+		if res, scattered := rec.Mat.Scatter(r, rec); scattered {
+			return res.Attenuation.HMul(rayColor(res.Scattered, world, depth - 1))
+		}
+		return Color{}
 	}
 	unitDirection := r.Dir.UnitVector()
 	t := 0.5 * (unitDirection.Y() + 1)
@@ -72,8 +74,15 @@ func main() {
 
 	// World
 	var world HittableList
-	world.Add(Sphere{Center: Point3{0, 0, -1}, Radius: 0.5})
-	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100})
+	materialGround := Lambertian{Albedo: Color{0.8, 0.8, 0.0}}
+	materialCenter := Lambertian{Albedo: Color{0.7, 0.3, 0.3}}
+	materialLeft := Metal{Albedo: Color{0.8, 0.8, 0.8}, Fuzz: 0.3}
+	materialRight := Metal{Albedo: Color{0.8, 0.6, 0.2}, Fuzz: 1}
+
+	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100, Mat: materialGround})
+	world.Add(Sphere{Center: Point3{0, 0, -1}, Radius: 0.5, Mat: materialCenter})
+	world.Add(Sphere{Center: Point3{-1, 0, -1}, Radius: 0.5, Mat: materialLeft})
+	world.Add(Sphere{Center: Point3{1, 0, -1}, Radius: 0.5, Mat: materialRight})
 
 	// Camera
 	cam := NewCamera()
