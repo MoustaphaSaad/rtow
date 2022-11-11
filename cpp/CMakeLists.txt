@@ -16,6 +16,7 @@ add_executable(rtow
 	hittable_list.h
 	rtweekend.h
 	camera.h
+	material.h
 )
 
 target_compile_features(rtow PUBLIC cxx_std_17)
