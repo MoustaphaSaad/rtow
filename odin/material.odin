@@ -42,7 +42,7 @@ _lambertian_vtable := Material_VTable {
 	scatter = proc(self: Material, r: Ray, rec: HitRecord) -> (MaterialRecord, bool) {
 		lambertian := (^Lambertian)(self.data)
 		return lambertian_scatter(lambertian, r, rec)
-	}
+	},
 }
 
 Metal :: struct {
@@ -69,7 +69,7 @@ _metal_vtable := Material_VTable {
 	scatter = proc(self: Material, r: Ray, rec: HitRecord) -> (MaterialRecord, bool) {
 		metal := (^Metal)(self.data)
 		return metal_scatter(metal, r, rec)
-	}
+	},
 }
 
 to_material :: proc{lambertian_to_material, metal_to_material}
