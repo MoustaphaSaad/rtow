@@ -92,6 +92,13 @@ func (v Vec3) Reflect(normal Vec3) Vec3 {
 	return v.Sub(normal.Mul(v.Dot(normal) * 2))
 }
 
+func (uv Vec3) Refract(normal Vec3, etai_over_etat float64) Vec3 {
+	cos_theta := math.Min(uv.Negate().Dot(normal), 1)
+	r_out_perp := uv.Add(normal.Mul(cos_theta)).Mul(etai_over_etat)
+	r_out_parallel := normal.Mul(-math.Sqrt(math.Abs(1 - r_out_perp.LengthSquared())))
+	return r_out_perp.Add(r_out_parallel)
+}
+
 func RandomDouble() float64 {
 	return rand.Float64()
 }

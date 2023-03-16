@@ -75,8 +75,8 @@ func main() {
 	// World
 	var world HittableList
 	materialGround := Lambertian{Albedo: Color{0.8, 0.8, 0.0}}
-	materialCenter := Lambertian{Albedo: Color{0.7, 0.3, 0.3}}
-	materialLeft := Metal{Albedo: Color{0.8, 0.8, 0.8}, Fuzz: 0.3}
+	materialCenter := Dielectric{IndexOfRefraction: 1.5}
+	materialLeft := Dielectric{IndexOfRefraction: 1.5}
 	materialRight := Metal{Albedo: Color{0.8, 0.6, 0.2}, Fuzz: 1}
 
 	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100, Mat: materialGround})

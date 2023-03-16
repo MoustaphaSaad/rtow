@@ -44,3 +44,22 @@ func (m Metal) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bo
 	scattered = res.Scattered.Dir.Dot(rec.Normal) > 0
 	return
 }
+
+type Dielectric struct {
+	IndexOfRefraction float64
+}
+
+func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+	res.Attenuation = Color{1, 1, 1}
+	refraction_ratio := d.IndexOfRefraction
+	if rec.FrontFace {
+		refraction_ratio = 1 / d.IndexOfRefraction
+	}
+
+	unit_direction := rIn.Dir.UnitVector()
+	refracted := unit_direction.Refract(rec.Normal, refraction_ratio)
+
+	res.Scattered = Ray{rec.P, refracted}
+	scattered = true
+	return
+}
