@@ -72,4 +72,36 @@ _metal_vtable := Material_VTable {
 	},
 }
 
-to_material :: proc{lambertian_to_material, metal_to_material}
+Dielectric :: struct {
+	ir: f64,
+}
+
+dielectric_scatter :: proc(self: ^Dielectric, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
+	res.attenuation = Color{1, 1, 1}
+	refraction_ratio := self.ir
+	if rec.front_face {
+		refraction_ratio = 1 / self.ir
+	}
+
+	unit_direction := linalg.normalize(r.Dir)
+	refracted := linalg.refract(unit_direction, rec.normal, refraction_ratio)
+	res.scattered = Ray{rec.p, refracted}
+	scattered = true
+	return
+}
+
+dielectric_to_material :: proc(self: ^Dielectric) -> Material {
+	return Material {
+		data = self,
+		vtable = &_dielectric_vtable,
+	}
+}
+
+_dielectric_vtable := Material_VTable {
+	scatter = proc(self: Material, r: Ray, rec: HitRecord) -> (MaterialRecord, bool) {
+		dielectric := (^Dielectric)(self.data)
+		return dielectric_scatter(dielectric, r, rec)
+	},
+}
+
+to_material :: proc{lambertian_to_material, metal_to_material, dielectric_to_material}
