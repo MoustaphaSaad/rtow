@@ -1,6 +1,8 @@
 package main
 
 import "core:math/linalg"
+import "core:math"
+import "core:math/rand"
 
 MaterialRecord :: struct {
 	attenuation: Color,
@@ -84,10 +86,25 @@ dielectric_scatter :: proc(self: ^Dielectric, r: Ray, rec: HitRecord) -> (res: M
 	}
 
 	unit_direction := linalg.normalize(r.Dir)
-	refracted := linalg.refract(unit_direction, rec.normal, refraction_ratio)
-	res.scattered = Ray{rec.p, refracted}
+	cos_theta := math.min(linalg.dot(-unit_direction, rec.normal), 1.0)
+	sin_theta := math.sqrt(1 - cos_theta * cos_theta)
+
+	cannot_refract := refraction_ratio * sin_theta > 1
+	direction: Vec3
+	if cannot_refract || relfectance(cos_theta, refraction_ratio) > rand.float64() {
+		direction = linalg.reflect(unit_direction, rec.normal)
+	} else {
+		direction = linalg.refract(unit_direction, rec.normal, refraction_ratio)
+	}
+	res.scattered = Ray{rec.p, direction}
 	scattered = true
 	return
+}
+
+relfectance :: proc(cosine, ref_idx: f64) -> f64 {
+	r0 := (1 - ref_idx) / (1 + ref_idx)
+	r0 = r0*r0
+	return r0 + (1 - r0) * math.pow((1 - cosine), 5)
 }
 
 dielectric_to_material :: proc(self: ^Dielectric) -> Material {
