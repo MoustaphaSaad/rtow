@@ -75,13 +75,13 @@ func main() {
 	// World
 	var world HittableList
 	materialGround := Lambertian{Albedo: Color{0.8, 0.8, 0.0}}
-	materialCenter := Dielectric{IndexOfRefraction: 1.5}
+	materialCenter := Lambertian{Albedo: Color{0.1, 0.2, 0.5}}
 	materialLeft := Dielectric{IndexOfRefraction: 1.5}
 	materialRight := Metal{Albedo: Color{0.8, 0.6, 0.2}, Fuzz: 1}
 
 	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100, Mat: materialGround})
 	world.Add(Sphere{Center: Point3{0, 0, -1}, Radius: 0.5, Mat: materialCenter})
-	world.Add(Sphere{Center: Point3{-1, 0, -1}, Radius: 0.5, Mat: materialLeft})
+	world.Add(Sphere{Center: Point3{-1, 0, -1}, Radius: -0.4, Mat: materialLeft})
 	world.Add(Sphere{Center: Point3{1, 0, -1}, Radius: 0.5, Mat: materialRight})
 
 	// Camera

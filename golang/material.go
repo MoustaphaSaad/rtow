@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type MaterialResult struct {
 	Attenuation Color
 	Scattered   Ray
@@ -57,9 +59,24 @@ func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scatter
 	}
 
 	unit_direction := rIn.Dir.UnitVector()
-	refracted := unit_direction.Refract(rec.Normal, refraction_ratio)
+	cos_theta := math.Min(unit_direction.Negate().Dot(rec.Normal), 1)
+	sin_theta := math.Sqrt(1 - cos_theta*cos_theta)
 
-	res.Scattered = Ray{rec.P, refracted}
+	cannot_refract := refraction_ratio * sin_theta > 1
+	var direction Vec3
+	if cannot_refract || Reflectance(cos_theta, refraction_ratio) > RandomDouble() {
+		direction = unit_direction.Reflect(rec.Normal)
+	} else {
+		direction = unit_direction.Refract(rec.Normal, refraction_ratio)
+	}
+
+	res.Scattered = Ray{rec.P, direction}
 	scattered = true
 	return
+}
+
+func Reflectance(cosine, ref_idx float64) float64 {
+	r0 := (1 - ref_idx) / (1 + ref_idx)
+	r0 = r0 * r0
+	return r0 + (1 - r0) * math.Pow((1 - cosine), 5)
 }
