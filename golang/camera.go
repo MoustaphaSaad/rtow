@@ -1,26 +1,32 @@
 package main
 
+import "math"
+
 type Camera struct {
 	Origin, LowerLeftCorner Point3
 	Horizontal, Vertical    Vec3
 }
 
-func NewCamera() (cam Camera) {
-	aspectRatio := 16.0 / 9.0
-	viewportHeight := 2.0
+func NewCamera(lookfrom, lookat Point3, vup Vec3, vfov, aspectRatio float64) (cam Camera) {
+	theta := degressToRadians(vfov)
+	h := math.Tan(theta / 2)
+	viewportHeight := 2 * h
 	viewportWidth := aspectRatio * viewportHeight
-	focalLength := 1.0
 
-	cam.Origin = Point3{0, 0, 0}
-	cam.Horizontal = Vec3{viewportWidth, 0, 0}
-	cam.Vertical = Vec3{0, viewportHeight, 0}
-	cam.LowerLeftCorner = cam.Origin.Sub(cam.Horizontal.Div(2)).Sub(cam.Vertical.Div(2)).Sub(Vec3{0, 0, focalLength})
+	w := lookfrom.Sub(lookat).UnitVector()
+	u := vup.Cross(w).UnitVector()
+	v := w.Cross(u)
+
+	cam.Origin = lookfrom
+	cam.Horizontal = u.Mul(viewportWidth)
+	cam.Vertical = v.Mul(viewportHeight)
+	cam.LowerLeftCorner = cam.Origin.Sub(cam.Horizontal.Div(2)).Sub(cam.Vertical.Div(2)).Sub(w)
 	return
 }
 
-func (cam Camera) ray(u, v float64) Ray {
+func (cam Camera) ray(s, t float64) Ray {
 	return Ray{
 		Orig: cam.Origin,
-		Dir:  cam.LowerLeftCorner.Add(cam.Horizontal.Mul(u)).Add(cam.Vertical.Mul(v)).Sub(cam.Origin),
+		Dir:  cam.LowerLeftCorner.Add(cam.Horizontal.Mul(s)).Add(cam.Vertical.Mul(t)).Sub(cam.Origin),
 	}
 }

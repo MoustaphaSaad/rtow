@@ -61,9 +61,9 @@ func (v Vec3) Dot(u Vec3) float64 {
 }
 
 func (v Vec3) Cross(u Vec3) (res Vec3) {
-	res[0] = u[1] * v[2] - u[2] * v[1]
-	res[1] = u[2] * v[0] - u[0] * v[2]
-	res[2] = u[0] * v[1] - u[1] * v[0]
+	res[0] = v[1] * u[2] - v[2] * u[1]
+	res[1] = v[2] * u[0] - v[0] * u[2]
+	res[2] = v[0] * u[1] - v[1] * u[0]
 	return
 }
 

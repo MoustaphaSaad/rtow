@@ -74,18 +74,20 @@ func main() {
 
 	// World
 	var world HittableList
-	materialGround := Lambertian{Albedo: Color{0.8, 0.8, 0.0}}
-	materialCenter := Lambertian{Albedo: Color{0.1, 0.2, 0.5}}
-	materialLeft := Dielectric{IndexOfRefraction: 1.5}
-	materialRight := Metal{Albedo: Color{0.8, 0.6, 0.2}, Fuzz: 1}
 
-	world.Add(Sphere{Center: Point3{0, -100.5, -1}, Radius: 100, Mat: materialGround})
-	world.Add(Sphere{Center: Point3{0, 0, -1}, Radius: 0.5, Mat: materialCenter})
-	world.Add(Sphere{Center: Point3{-1, 0, -1}, Radius: -0.4, Mat: materialLeft})
-	world.Add(Sphere{Center: Point3{1, 0, -1}, Radius: 0.5, Mat: materialRight})
+	materialGround := Lambertian{Color{0.8, 0.8, 0}}
+	materialCenter := Lambertian{Color{0.1, 0.2, 0.5}}
+	materialLeft := Dielectric{1.5}
+	materialRight := Metal{Color{0.8, 0.6, 0.2}, 0}
+
+	world.Add(Sphere{Point3{0, -100.5, -1}, 100, materialGround})
+	world.Add(Sphere{Point3{0, 0, -1}, 0.5, materialCenter})
+	world.Add(Sphere{Point3{-1, 0, -1}, 0.5, materialLeft})
+	world.Add(Sphere{Point3{-1, 0, -1}, -0.45, materialLeft})
+	world.Add(Sphere{Point3{1, 0, -1}, 0.5, materialRight})
 
 	// Camera
-	cam := NewCamera()
+	cam := NewCamera(Point3{-2, 2, 1}, Point3{0, 0, -1}, Vec3{0, 1, 0}, 20, aspectRatio)
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
 
