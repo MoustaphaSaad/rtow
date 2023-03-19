@@ -1,5 +1,7 @@
 package main
 
+import "core:fmt"
+
 HittableList :: []Hittable
 
 hittable_list_hit :: proc(self: HittableList, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
@@ -7,7 +9,7 @@ hittable_list_hit :: proc(self: HittableList, r: Ray, t_min, t_max: f64) -> (rec
 	closest_so_far := t_max
 
 	for v in self {
-		if v_rec, v_hit := v->hit(r, t_min, t_max); v_hit {
+		if v_rec, v_hit := v->hit(r, t_min, closest_so_far); v_hit {
 			hit = true
 			closest_so_far = v_rec.t
 			rec = v_rec

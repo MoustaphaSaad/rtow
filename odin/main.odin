@@ -92,7 +92,7 @@ main :: proc() {
 	material_ground := Lambertian{Color{0.8, 0.8, 0.0}}
 	material_center := Lambertian{Color{0.1, 0.2, 0.5}}
 	material_left := Dielectric{1.5}
-	material_right := Metal{Color{0.8, 0.6, 0.2}, 1}
+	material_right := Metal{Color{0.8, 0.6, 0.2}, 0.0}
 
 	world_list := []Hittable{
 		sphere_to_hittable(&Sphere{
@@ -101,8 +101,18 @@ main :: proc() {
 			mat = to_material(&material_ground),
 		}),
 		sphere_to_hittable(&Sphere{
+			center = Point3{0, 0, -1},
+			radius = 0.5,
+			mat = to_material(&material_center),
+		}),
+		sphere_to_hittable(&Sphere{
 			center = Point3{-1, 0, -1},
-			radius = -0.4,
+			radius = 0.5,
+			mat = to_material(&material_left),
+		}),
+		sphere_to_hittable(&Sphere{
+			center = Point3{-1, 0, -1},
+			radius = -0.45,
 			mat = to_material(&material_left),
 		}),
 		sphere_to_hittable(&Sphere{
@@ -110,16 +120,11 @@ main :: proc() {
 			radius = 0.5,
 			mat = to_material(&material_right),
 		}),
-		sphere_to_hittable(&Sphere{
-			center = Point3{0, 0, -1},
-			radius = 0.5,
-			mat = to_material(&material_center),
-		}),
 	}
 	world := hittable_list_to_hittable(&world_list)
 
 	// Camera
-	cam := new_camera()
+	cam := new_camera(Point3{-2, 2, 1}, Point3{0, 0, -1}, Vec3{0, 1, 0}, 20, aspect_ratio)
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
 

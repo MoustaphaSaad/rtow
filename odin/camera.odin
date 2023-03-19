@@ -1,26 +1,33 @@
 package main
 
+import "core:math"
+import "core:math/linalg"
+
 Camera :: struct {
 	origin, lower_left_corner: Point3,
 	horizontal, vertical: Vec3,
 }
 
-new_camera :: proc() -> (cam: Camera) {
-	aspect_ratio := 16.0 / 9.0
-	viewport_height := 2.0
+new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio: f64) -> (cam: Camera) {
+	theta := degrees_to_radians(vfov)
+	h := math.tan(theta / 2)
+	viewport_height := 2 * h
 	viewport_width := aspect_ratio * viewport_height
-	focal_length := 1.0
 
-	cam.origin = Point3{0, 0, 0}
-	cam.horizontal = Vec3{viewport_width, 0, 0}
-	cam.vertical = Vec3{0, viewport_height, 0}
-	cam.lower_left_corner = cam.origin - cam.horizontal/2 - cam.vertical/2 - Vec3{0, 0, focal_length}
+	w := linalg.normalize(lookfrom - lookat)
+	u := linalg.normalize(linalg.cross(vup, w))
+	v := linalg.cross(w, u)
+
+	cam.origin = lookfrom
+	cam.horizontal = u * viewport_width
+	cam.vertical = v * viewport_height
+	cam.lower_left_corner = cam.origin - cam.horizontal/2 - cam.vertical/2 - w
 	return
 }
 
-camera_ray :: proc(self: Camera, u, v: f64) -> Ray {
+camera_ray :: proc(self: Camera, s, t: f64) -> Ray {
 	return Ray {
 		Orig = self.origin,
-		Dir = self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin,
+		Dir = self.lower_left_corner + self.horizontal * s + self.vertical * t - self.origin,
 	}
 }
