@@ -87,7 +87,12 @@ func main() {
 	world.Add(Sphere{Point3{1, 0, -1}, 0.5, materialRight})
 
 	// Camera
-	cam := NewCamera(Point3{-2, 2, 1}, Point3{0, 0, -1}, Vec3{0, 1, 0}, 20, aspectRatio)
+	lookFrom := Point3{3, 3, 2}
+	lookAt := Point3{0, 0, -1}
+	vUp := Vec3{0, 1, 0}
+	distToFocus := lookFrom.Sub(lookAt).Length()
+	aperture := 2.0
+	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
 

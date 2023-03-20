@@ -124,7 +124,12 @@ main :: proc() {
 	world := hittable_list_to_hittable(&world_list)
 
 	// Camera
-	cam := new_camera(Point3{-2, 2, 1}, Point3{0, 0, -1}, Vec3{0, 1, 0}, 20, aspect_ratio)
+	lookfrom := Point3{3, 3, 2}
+	lookat := Point3{0, 0, -1}
+	vup := Vec3{0, 1, 0}
+	dist_to_focus := linalg.length(lookfrom - lookat)
+	aperture := 2.0
+	cam := new_camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus)
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
 

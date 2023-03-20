@@ -162,3 +162,11 @@ func (c Color) Write(out io.Writer, samplesPerPixel float64) {
 		int(256 * Clamp(b, 0.0, 0.999)),
 	)
 }
+
+func RandomInUnitDisk() Vec3 {
+	for {
+		p := Vec3{RandomDoubleInRange(-1, 1), RandomDoubleInRange(-1, 1), 0}
+		if p.LengthSquared() >= 1 { continue }
+		return p
+	}
+}

@@ -57,3 +57,11 @@ write_color :: proc(out: io.Writer, c: Color, samples_per_pixel: f64) {
 
 	fmt.wprintf(out, "%v %v %v\n", int(256 * math.clamp(r, 0, 0.999)), int(256 * math.clamp(g, 0, 0.999)), int(256 * math.clamp(b, 0, 0.999)))
 }
+
+random_in_unit_disk :: proc() -> Vec3 {
+	for {
+		p := Vec3{rand.float64_range(-1, 1), rand.float64_range(-1, 1), 0}
+		if linalg.length2(p) >= 1 { continue }
+		return p
+	}
+}
