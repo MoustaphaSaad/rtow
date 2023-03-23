@@ -61,37 +61,69 @@ func rayColor(r Ray, world Hittable, depth int) Color {
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))
 }
 
+func randomScene() HittableList {
+	var world HittableList
+
+	groundMaterial := Lambertian{Color{0.5, 0.5, 0.5}}
+	world.Add(Sphere{Point3{0, -1000, 0}, 1000, groundMaterial})
+
+	for a := -11; a < 11; a++ {
+		for b := -11; b < 11; b++ {
+			chooseMat := RandomDouble();
+			center := Point3{float64(a) + 0.9*RandomDouble(), 0.2, float64(b) + 0.9*RandomDouble()}
+
+			if center.Sub(Point3{4, 0.2, 0}).Length() > 0.9 {
+				var sphereMaterial Material
+
+				if chooseMat < 0.8 {
+					albedo := RandomVec3()
+					sphereMaterial = Lambertian{albedo}
+					world.Add(Sphere{center, 0.2, sphereMaterial})
+				} else if chooseMat < 0.95 {
+					albedo := RandomVec3InRange(0.5, 1)
+					fuzz := RandomDoubleInRange(0, 0.5)
+					sphereMaterial = Metal{albedo, fuzz}
+					world.Add(Sphere{center, 0.2, sphereMaterial})
+				} else {
+					sphereMaterial = Dielectric{1.5}
+					world.Add(Sphere{center, 0.2, sphereMaterial})
+				}
+			}
+		}
+	}
+
+	material1 := Dielectric{1.5}
+	world.Add(Sphere{Point3{0, 1, 0}, 1.0, material1})
+
+	material2 := Lambertian{Color{0.4, 0.2, 0.1}}
+	world.Add(Sphere{Point3{-4, 1, 0}, 1.0, material2})
+
+	material3 := Metal{Color{0.7, 0.6, 0.5}, 0}
+	world.Add(Sphere{Point3{4, 1, 0}, 1.0, material3})
+
+	return world
+}
+
 func main() {
 	start := time.Now()
 
 	// Image
 	var aspectRatio = 16.0 / 9.0
-	var imageWidth = 400
+	var imageWidth = 640
 	var imageHeight = int(float64(imageWidth) / aspectRatio)
-	var samplesPerPixel = 100
+	var samplesPerPixel = 64
 	var raysCount = imageWidth * imageHeight * samplesPerPixel
 	var maxDepth = 50
 
 	// World
-	var world HittableList
-
-	materialGround := Lambertian{Color{0.8, 0.8, 0}}
-	materialCenter := Lambertian{Color{0.1, 0.2, 0.5}}
-	materialLeft := Dielectric{1.5}
-	materialRight := Metal{Color{0.8, 0.6, 0.2}, 0}
-
-	world.Add(Sphere{Point3{0, -100.5, -1}, 100, materialGround})
-	world.Add(Sphere{Point3{0, 0, -1}, 0.5, materialCenter})
-	world.Add(Sphere{Point3{-1, 0, -1}, 0.5, materialLeft})
-	world.Add(Sphere{Point3{-1, 0, -1}, -0.45, materialLeft})
-	world.Add(Sphere{Point3{1, 0, -1}, 0.5, materialRight})
+	world := randomScene()
 
 	// Camera
-	lookFrom := Point3{3, 3, 2}
-	lookAt := Point3{0, 0, -1}
+	lookFrom := Point3{13, 2, 3}
+	lookAt := Point3{0, 0, 0}
 	vUp := Vec3{0, 1, 0}
-	distToFocus := lookFrom.Sub(lookAt).Length()
-	aperture := 2.0
+	distToFocus := 10.0
+	aperture := 0.1
 	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
