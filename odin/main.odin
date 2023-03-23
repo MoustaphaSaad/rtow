@@ -61,6 +61,77 @@ ray_color :: proc(r: Ray, world: Hittable, depth: int) -> Color {
 	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
 }
 
+random_scene :: proc() -> (res: ^HittableList) {
+	res = hittable_list_new()
+
+	ground_material := to_material(hittable_list_alloc(res, Lambertian{Color{0.5, 0.5, 0.5}}))
+	hittable_list_add(res, Sphere {
+		center = Point3{0, -1000, 0},
+		radius = 1000,
+		mat = ground_material,
+	})
+
+	for a in -11..<11 {
+		for b in -11..<11 {
+			choose_mat := rand.float64()
+			center := Point3{f64(a) + 0.9*rand.float64(), 0.2, f64(b) + 0.9*rand.float64()}
+
+			if linalg.length(center - Point3{4, 0.2, 0}) > 0.9 {
+				sphere_material: Material
+
+				if choose_mat < 0.8 {
+					albedo := random_vec3() * random_vec3()
+					sphere_material = to_material(hittable_list_alloc(res, Lambertian{albedo}))
+					hittable_list_add(res, Sphere{
+						center,
+						0.2,
+						sphere_material,
+					})
+				} else if choose_mat < 0.95 {
+					albedo := rand.float64_range(0.5, 1)
+					fuzz := rand.float64_range(0, 0.5)
+					sphere_material = to_material(hittable_list_alloc(res, Metal{albedo, fuzz}))
+					hittable_list_add(res, Sphere{
+						center,
+						0.2,
+						sphere_material,
+					})
+				} else {
+					sphere_material = to_material(hittable_list_alloc(res, Dielectric{1.5}))
+					hittable_list_add(res, Sphere{
+						center,
+						0.2,
+						sphere_material,
+					})
+				}
+			}
+		}
+	}
+
+	material1 := to_material(hittable_list_alloc(res, Dielectric{1.5}))
+	hittable_list_add(res, Sphere{
+		Point3{0, 1, 0},
+		1.0,
+		material1,
+	})
+
+	material2 := to_material(hittable_list_alloc(res, Lambertian{Color{0.4, 0.2, 0.1}}))
+	hittable_list_add(res, Sphere{
+		Point3{-4, 1, 0},
+		1.0,
+		material2,
+	})
+
+	material3 := to_material(hittable_list_alloc(res, Metal{Color{0.7, 0.6, 0.5}, 0}))
+	hittable_list_add(res, Sphere{
+		Point3{4, 1, 0},
+		1.0,
+		material3,
+	})
+
+	return
+}
+
 main :: proc() {
 	start := time.now()
 
@@ -82,57 +153,21 @@ main :: proc() {
 
 	// Image
 	aspect_ratio := 16.0 / 9.0
-	image_width := 400
+	image_width := 640
 	image_height := int(f64(image_width) / aspect_ratio)
-	samples_per_pixel := 100
+	samples_per_pixel := 64
 	rays_count := image_width * image_height * samples_per_pixel
 	max_depth := 50
 
 	// World
-	world := hittable_list_new()
-	defer hittable_list_free(world)
-
-	material_ground := to_material(hittable_list_alloc(world, Lambertian{Color{0.8, 0.8, 0.0}}))
-	material_center := to_material(hittable_list_alloc(world, Lambertian{Color{0.1, 0.2, 0.5}}))
-	material_left := to_material(hittable_list_alloc(world, Dielectric{1.5}))
-	material_right := to_material(hittable_list_alloc(world, Metal{Color{0.8, 0.6, 0.2}, 0.0}))
-
-	hittable_list_add(world, Sphere{
-		center = Point3{0, -100.5, -1},
-		radius = 100,
-		mat = material_ground,
-	})
-
-	hittable_list_add(world, Sphere{
-		center = Point3{0, 0, -1},
-		radius = 0.5,
-		mat = material_center,
-	})
-
-	hittable_list_add(world, Sphere{
-		center = Point3{-1, 0, -1},
-		radius = 0.5,
-		mat = material_left,
-	})
-
-	hittable_list_add(world, Sphere{
-		center = Point3{-1, 0, -1},
-		radius = -0.45,
-		mat = material_left,
-	})
-
-	hittable_list_add(world, Sphere{
-		center = Point3{1, 0, -1},
-		radius = 0.5,
-		mat = material_right,
-	})
+	world := random_scene()
 
 	// Camera
-	lookfrom := Point3{3, 3, 2}
-	lookat := Point3{0, 0, -1}
+	lookfrom := Point3{13, 2, 3}
+	lookat := Point3{0, 0, 0}
 	vup := Vec3{0, 1, 0}
-	dist_to_focus := linalg.length(lookfrom - lookat)
-	aperture := 2.0
+	dist_to_focus := 10.0
+	aperture := 0.1
 	cam := new_camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus)
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
