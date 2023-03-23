@@ -89,39 +89,43 @@ main :: proc() {
 	max_depth := 50
 
 	// World
-	material_ground := Lambertian{Color{0.8, 0.8, 0.0}}
-	material_center := Lambertian{Color{0.1, 0.2, 0.5}}
-	material_left := Dielectric{1.5}
-	material_right := Metal{Color{0.8, 0.6, 0.2}, 0.0}
+	world := hittable_list_new()
+	defer hittable_list_free(world)
 
-	world_list := []Hittable{
-		sphere_to_hittable(&Sphere{
-			center = Point3{0, -100.5, -1},
-			radius = 100,
-			mat = to_material(&material_ground),
-		}),
-		sphere_to_hittable(&Sphere{
-			center = Point3{0, 0, -1},
-			radius = 0.5,
-			mat = to_material(&material_center),
-		}),
-		sphere_to_hittable(&Sphere{
-			center = Point3{-1, 0, -1},
-			radius = 0.5,
-			mat = to_material(&material_left),
-		}),
-		sphere_to_hittable(&Sphere{
-			center = Point3{-1, 0, -1},
-			radius = -0.45,
-			mat = to_material(&material_left),
-		}),
-		sphere_to_hittable(&Sphere{
-			center = Point3{1, 0, -1},
-			radius = 0.5,
-			mat = to_material(&material_right),
-		}),
-	}
-	world := hittable_list_to_hittable(&world_list)
+	material_ground := to_material(hittable_list_alloc(world, Lambertian{Color{0.8, 0.8, 0.0}}))
+	material_center := to_material(hittable_list_alloc(world, Lambertian{Color{0.1, 0.2, 0.5}}))
+	material_left := to_material(hittable_list_alloc(world, Dielectric{1.5}))
+	material_right := to_material(hittable_list_alloc(world, Metal{Color{0.8, 0.6, 0.2}, 0.0}))
+
+	hittable_list_add(world, Sphere{
+		center = Point3{0, -100.5, -1},
+		radius = 100,
+		mat = material_ground,
+	})
+
+	hittable_list_add(world, Sphere{
+		center = Point3{0, 0, -1},
+		radius = 0.5,
+		mat = material_center,
+	})
+
+	hittable_list_add(world, Sphere{
+		center = Point3{-1, 0, -1},
+		radius = 0.5,
+		mat = material_left,
+	})
+
+	hittable_list_add(world, Sphere{
+		center = Point3{-1, 0, -1},
+		radius = -0.45,
+		mat = material_left,
+	})
+
+	hittable_list_add(world, Sphere{
+		center = Point3{1, 0, -1},
+		radius = 0.5,
+		mat = material_right,
+	})
 
 	// Camera
 	lookfrom := Point3{3, 3, 2}
@@ -149,7 +153,7 @@ main :: proc() {
 				u := (f64(i) + rand.float64()) / f64(image_width - 1)
 				v := (f64(j) + rand.float64()) / f64(image_height - 1)
 				r := camera_ray(cam, u, v)
-				pixel_color += ray_color(r, world, max_depth)
+				pixel_color += ray_color(r, to_hittable(world), max_depth)
 			}
 			pixel_only += time.since(start)
 			write_color(stdout, pixel_color, f64(samples_per_pixel))
