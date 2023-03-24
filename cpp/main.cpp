@@ -9,7 +9,7 @@
 #include <iostream>
 #include <chrono>
 
-double hit_sphere(const point3& center, double radius, const ray& r)
+real_t hit_sphere(const point3& center, real_t radius, const ray& r)
 {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
@@ -121,7 +121,7 @@ int main()
 	const auto aspect_ratio = 16.0 / 9.0;
 	const int image_width = 640;
 	const int image_height = static_cast<int>(image_width / aspect_ratio);
-	const int samples_per_pixel = 64;
+	const int samples_per_pixel = 10;
 	const size_t rays_count = image_width * image_height * samples_per_pixel;
 	const int max_depth = 50;
 
@@ -138,12 +138,12 @@ int main()
 
 	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
-	std::chrono::duration<double, std::milli> pixel_only{};
+	std::chrono::duration<real_t, std::milli> pixel_only{};
 
 	for (int j = image_height - 1; j >= 0; --j)
 	{
 		auto end = std::chrono::high_resolution_clock::now();
-		std::cerr << "\rElapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms, ";
+		std::cerr << "\rElapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms, ";
 		std::cerr << "Scan lines remaining: " << j << ' ' << std::flush;
 		for (int i = 0; i < image_width; ++i)
 		{
@@ -165,9 +165,9 @@ int main()
 	std::cerr << "\nDone.\n";
 
 	auto end = std::chrono::high_resolution_clock::now();
-	std::cerr << "Elapsed time: " << std::chrono::duration<double, std::milli>(end - start).count() << "ms\n";
+	std::cerr << "Elapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms\n";
 	std::cerr << "Pixel time: " << pixel_only.count() << "ms\n";
-	std::cerr << "Ray Per Sec: " << (double(rays_count) / (double(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
+	std::cerr << "Ray Per Sec: " << (real_t(rays_count) / (real_t(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
 
 	return 0;
 }

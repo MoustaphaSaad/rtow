@@ -5,7 +5,7 @@
 class camera
 {
 public:
-	camera(point3 lookfrom, point3 lookat, vec3 vup, double vertical_fov_degrees, double aspect_ratio, double aperture, double focus_dist)
+	camera(point3 lookfrom, point3 lookat, vec3 vup, real_t vertical_fov_degrees, real_t aspect_ratio, real_t aperture, real_t focus_dist)
 	{
 		auto theta = degrees_to_radians(vertical_fov_degrees);
 		auto h = tan(theta / 2);
@@ -24,7 +24,7 @@ public:
 		lens_radius = aperture / 2;
 	}
 
-	ray get_ray(double s, double t) const
+	ray get_ray(real_t s, real_t t) const
 	{
 		auto rd = lens_radius * random_in_unit_disk();
 		auto offset = u * rd.x() + v * rd.y();
@@ -38,5 +38,5 @@ private:
 	vec3 horizontal;
 	vec3 vertical;
 	vec3 u, v, w;
-	double lens_radius;
+	real_t lens_radius;
 };

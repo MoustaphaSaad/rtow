@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-void write_color(std::ostream& out, color pixel_color, double samples_per_pixel)
+void write_color(std::ostream& out, color pixel_color, real_t samples_per_pixel)
 {
 	auto r = pixel_color.x();
 	auto g = pixel_color.y();

@@ -16,7 +16,7 @@ public:
 	void clear() { objects.clear(); }
 	void add(shared_ptr<hittable> object) { return objects.push_back(object); }
 
-	virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override
+	virtual bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const override
 	{
 		hit_record temp_rec;
 		bool hit_anything = false;

@@ -7,13 +7,13 @@ class sphere: public hittable
 {
 public:
 	sphere() {}
-	sphere(point3 cen, double r, shared_ptr<material> m)
+	sphere(point3 cen, real_t r, shared_ptr<material> m)
 		: center(cen),
 		  radius(r),
 		  mat_ptr(m)
 	{}
 
-	virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override
+	virtual bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const override
 	{
 		auto a = r.direction().length_squared();
 		auto oc = r.origin() - center;
@@ -42,6 +42,6 @@ public:
 	}
 
 	point3 center;
-	double radius;
+	real_t radius;
 	shared_ptr<material> mat_ptr;
 };
