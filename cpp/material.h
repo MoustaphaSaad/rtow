@@ -34,7 +34,7 @@ public:
 class metal: public material
 {
 public:
-	metal(const color& a, double f)
+	metal(const color& a, real_t f)
 		: albedo(a),
 		  fuzz(f < 1 ? f : 1)
 	{}
@@ -48,20 +48,20 @@ public:
 	}
 
 	color albedo;
-	double fuzz;
+	real_t fuzz;
 };
 
 class dielectric: public material
 {
 public:
-	dielectric(double index_of_refraction)
+	dielectric(real_t index_of_refraction)
 		:ir(index_of_refraction)
 	{}
 
 	virtual bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override
 	{
 		attenuation = color{1, 1, 1};
-		double refraction_ratio = rec.front_face ? (1.0/ir) : ir;
+		real_t refraction_ratio = rec.front_face ? (1.0/ir) : ir;
 
 		vec3 unit_direction = unit_vector(r_in.direction());
 		auto cos_theta = fmin(dot(-unit_direction, rec.normal), 1.0);
@@ -80,10 +80,10 @@ public:
 	}
 
 	// index of refraction
-	double ir;
+	real_t ir;
 
 private:
-	static double reflectance(double cosine, double ref_idx)
+	static real_t reflectance(real_t cosine, real_t ref_idx)
 	{
 		auto r0 = (1 - ref_idx) / (1 + ref_idx);
 		r0 = r0 * r0;

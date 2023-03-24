@@ -12,17 +12,17 @@ public:
 		: e{0, 0, 0}
 	{}
 
-	vec3(double e0, double e1, double e2)
+	vec3(real_t e0, real_t e1, real_t e2)
 		: e{e0, e1, e2}
 	{}
 
-	double x() const { return e[0]; }
-	double y() const { return e[1]; }
-	double z() const { return e[2]; }
+	real_t x() const { return e[0]; }
+	real_t y() const { return e[1]; }
+	real_t z() const { return e[2]; }
 
 	vec3 operator-() const { return vec3{-e[0], -e[1], -e[2]}; }
-	double operator[](int i) const { return e[i]; }
-	double& operator[](int i) { return e[i]; }
+	real_t operator[](int i) const { return e[i]; }
+	real_t& operator[](int i) { return e[i]; }
 
 	vec3& operator+=(const vec3& v)
 	{
@@ -32,7 +32,7 @@ public:
 		return *this;
 	}
 
-	vec3& operator*=(double t)
+	vec3& operator*=(real_t t)
 	{
 		e[0] *= t;
 		e[1] *= t;
@@ -40,17 +40,17 @@ public:
 		return *this;
 	}
 
-	vec3& operator/=(double t)
+	vec3& operator/=(real_t t)
 	{
 		return *this *= 1/t;
 	}
 
-	double length() const
+	real_t length() const
 	{
 		return sqrt(length_squared());
 	}
 
-	double length_squared() const
+	real_t length_squared() const
 	{
 		return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
 	}
@@ -66,13 +66,13 @@ public:
 		return vec3{random_double(), random_double(), random_double()};
 	}
 
-	inline static vec3 random(double min, double max)
+	inline static vec3 random(real_t min, real_t max)
 	{
 		return vec3{random_double(min, max), random_double(min, max), random_double(min, max)};
 	}
 
 public:
-	double e[3];
+	real_t e[3];
 };
 
 using point3 = vec3;
@@ -98,22 +98,22 @@ inline vec3 operator*(const vec3& u, const vec3& v)
 	return vec3{u.e[0] * v.e[0], u.e[1] * v.e[1], u.e[2] * v.e[2]};
 }
 
-inline vec3 operator*(double t, const vec3& v)
+inline vec3 operator*(real_t t, const vec3& v)
 {
 	return vec3{t * v.e[0], t * v.e[1], t * v.e[2]};
 }
 
-inline vec3 operator*(const vec3& v, double t)
+inline vec3 operator*(const vec3& v, real_t t)
 {
 	return t * v;
 }
 
-inline vec3 operator/(vec3 v, double t)
+inline vec3 operator/(vec3 v, real_t t)
 {
 	return (1/t) * v;
 }
 
-inline double dot(const vec3& u, const vec3& v)
+inline real_t dot(const vec3& u, const vec3& v)
 {
 	return (
 		u.e[0] * v.e[0] +
@@ -166,7 +166,7 @@ vec3 reflect(const vec3& v, const vec3& n)
 	return v - 2 * dot(v, n) * n;
 }
 
-vec3 refract(const vec3& uv, const vec3& n, double etai_over_etat)
+vec3 refract(const vec3& uv, const vec3& n, real_t etai_over_etat)
 {
 	auto cos_theta = fmin(dot(-uv, n), 1.0);
 	auto r_out_perp = etai_over_etat * (uv + cos_theta*n);

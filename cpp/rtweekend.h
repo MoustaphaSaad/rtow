@@ -8,24 +8,26 @@ using std::shared_ptr;
 using std::make_shared;
 using std::sqrt;
 
-const double infinity = std::numeric_limits<double>::infinity();
-const double pi = 3.1415926535897932385;
+using real_t = double;
 
-inline double degrees_to_radians(double degrees) {
+const real_t infinity = std::numeric_limits<real_t>::infinity();
+const real_t pi = 3.1415926535897932385;
+
+inline real_t degrees_to_radians(real_t degrees) {
 	return degrees * pi / 180.0;
 }
 
-inline double random_double()
+inline real_t random_double()
 {
 	return rand() / (RAND_MAX + 1.0);
 }
 
-inline double random_double(double min, double max)
+inline real_t random_double(real_t min, real_t max)
 {
 	return min + (max - min) * random_double();
 }
 
-inline double clamp(double x, double min, double max)
+inline real_t clamp(real_t x, real_t min, real_t max)
 {
 	if (x < min) return min;
 	if (x > max) return max;
