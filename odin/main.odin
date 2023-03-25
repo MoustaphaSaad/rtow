@@ -25,10 +25,10 @@ hit_sphere :: proc(center: Point3, radius: f32, r: Ray) -> f32 {
 	// and using the quadratic equation formula you have the discriminant = b^2 - 4ac, if it's positive we have 2 solutions
 	// if it's 0 we have one, if it's negative we have no solution
 
-	a := linalg.length2(r.Dir)
+	a := v3_length2(r.Dir)
 	oc := r.Orig - center
-	half_b := linalg.dot(oc, r.Dir)
-	c := linalg.length2(oc) - radius * radius
+	half_b := v3_dot(oc, r.Dir)
+	c := v3_length2(oc) - radius * radius
 	discriminant := half_b * half_b - a * c
 	if discriminant < 0 {
 		return -1
@@ -57,7 +57,7 @@ ray_color :: proc(r: Ray, world: ^HittableList, depth: int) -> Color {
 		target := rec.p + rec.normal + random_in_hemisphere(rec.normal)
 		return 0.5 * ray_color(Ray{rec.p, target - rec.p}, world, depth - 1)
 	}
-	unit_direction := linalg.normalize(r.Dir)
+	unit_direction := v3_normalize(r.Dir)
 	t := 0.5 * (unit_direction.y + 1)
 	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
 }
@@ -77,7 +77,7 @@ random_scene :: proc() -> (res: ^HittableList) {
 			choose_mat := rand.float32()
 			center := Point3{f32(a) + 0.9*rand.float32(), 0.2, f32(b) + 0.9*rand.float32()}
 
-			if linalg.length(center - Point3{4, 0.2, 0}) > 0.9 {
+			if v3_length(center - Point3{4, 0.2, 0}) > 0.9 {
 				sphere_material: int
 
 				if choose_mat < 0.8 {

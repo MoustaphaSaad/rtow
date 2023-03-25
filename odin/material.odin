@@ -30,10 +30,10 @@ Metal :: struct {
 }
 
 metal_scatter :: proc(self: Metal, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
-	reflected := linalg.reflect(linalg.normalize(r.Dir), rec.normal)
+	reflected := v3_reflect(v3_normalize(r.Dir), rec.normal)
 	res.scattered = Ray{rec.p, reflected + self.fuzz * random_in_unit_sphere()}
 	res.attenuation = self.albedo
-	scattered = linalg.dot(res.scattered.Dir, rec.normal) > 0
+	scattered = v3_dot(res.scattered.Dir, rec.normal) > 0
 	return
 }
 
@@ -48,16 +48,16 @@ dielectric_scatter :: proc(self: Dielectric, r: Ray, rec: HitRecord) -> (res: Ma
 		refraction_ratio = 1 / self.ir
 	}
 
-	unit_direction := linalg.normalize(r.Dir)
-	cos_theta := math.min(linalg.dot(-unit_direction, rec.normal), 1.0)
+	unit_direction := v3_normalize(r.Dir)
+	cos_theta := math.min(v3_dot(-unit_direction, rec.normal), 1.0)
 	sin_theta := math.sqrt(1 - cos_theta * cos_theta)
 
 	cannot_refract := refraction_ratio * sin_theta > 1
 	direction: Vec3
 	if cannot_refract || relfectance(cos_theta, refraction_ratio) > rand.float32() {
-		direction = linalg.reflect(unit_direction, rec.normal)
+		direction = v3_reflect(unit_direction, rec.normal)
 	} else {
-		direction = linalg.refract(unit_direction, rec.normal, refraction_ratio)
+		direction = v3_refract(unit_direction, rec.normal, refraction_ratio)
 	}
 	res.scattered = Ray{rec.p, direction}
 	scattered = true

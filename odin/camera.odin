@@ -16,9 +16,9 @@ new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio, aper
 	viewport_height := 2 * h
 	viewport_width := aspect_ratio * viewport_height
 
-	cam.w = linalg.normalize(lookfrom - lookat)
-	cam.u = linalg.normalize(linalg.cross(vup, cam.w))
-	cam.v = linalg.cross(cam.w, cam.u)
+	cam.w = v3_normalize(lookfrom - lookat)
+	cam.u = v3_normalize(v3_cross(vup, cam.w))
+	cam.v = v3_cross(cam.w, cam.u)
 
 	cam.origin = lookfrom
 	cam.horizontal = cam.u * viewport_width * focus_dist

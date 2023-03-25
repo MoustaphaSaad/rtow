@@ -10,10 +10,10 @@ Sphere :: struct {
 }
 
 sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f32) -> (rec: HitRecord, hit: bool) {
-	a := linalg.length2(r.Dir)
+	a := v3_length2(r.Dir)
 	oc := r.Orig - self.center
-	half_b := linalg.dot(oc, r.Dir)
-	c := linalg.length2(oc) - self.radius * self.radius
+	half_b := v3_dot(oc, r.Dir)
+	c := v3_length2(oc) - self.radius * self.radius
 	discriminant := half_b * half_b - a * c
 	if discriminant < 0 {
 		hit = false
