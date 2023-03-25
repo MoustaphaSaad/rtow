@@ -21,19 +21,19 @@ new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio, aper
 	cam.v = v3_cross(cam.w, cam.u)
 
 	cam.origin = lookfrom
-	cam.horizontal = cam.u * viewport_width * focus_dist
-	cam.vertical = cam.v * viewport_height * focus_dist
-	cam.lower_left_corner = cam.origin - cam.horizontal/2 - cam.vertical/2 - focus_dist * cam.w
+	cam.horizontal = cam.u * v3_splat(viewport_width * focus_dist)
+	cam.vertical = cam.v * v3_splat(viewport_height * focus_dist)
+	cam.lower_left_corner = cam.origin - cam.horizontal * v3_splat(0.5) - cam.vertical * v3_splat(0.5) - v3_splat(focus_dist) * cam.w
 
 	cam.lens_radius = aperture / 2;
 	return
 }
 
 camera_ray :: proc(self: Camera, s, t: f32) -> Ray {
-	rd := self.lens_radius * random_in_unit_disk()
-	offset := self.u * rd.x + self.v * rd.y
+	rd := v3_splat(self.lens_radius) * random_in_unit_disk()
+	offset := self.u * v3_splat_x(rd) + self.v * v3_splat_y(rd)
 	return Ray {
 		Orig = self.origin + offset,
-		Dir = self.lower_left_corner + self.horizontal * s + self.vertical * t - self.origin - offset,
+		Dir = self.lower_left_corner + self.horizontal * v3_splat(s) + self.vertical * v3_splat(t) - self.origin - offset,
 	}
 }

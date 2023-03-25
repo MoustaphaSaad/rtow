@@ -55,11 +55,11 @@ ray_color :: proc(r: Ray, world: ^HittableList, depth: int) -> Color {
 			return res.attenuation * ray_color(res.scattered, world, depth - 1)
 		}
 		target := rec.p + rec.normal + random_in_hemisphere(rec.normal)
-		return 0.5 * ray_color(Ray{rec.p, target - rec.p}, world, depth - 1)
+		return v3_splat(0.5) * ray_color(Ray{rec.p, target - rec.p}, world, depth - 1)
 	}
 	unit_direction := v3_normalize(r.Dir)
-	t := 0.5 * (unit_direction.y + 1)
-	return Color{1, 1, 1} * (1 - t) + Color{0.5, 0.7, 1} * t
+	t := 0.5 * (v3_to_array(unit_direction)[1] + 1.0)
+	return Color{1, 1, 1} * v3_splat(1 - t) + Color{0.5, 0.7, 1} * v3_splat(t)
 }
 
 random_scene :: proc() -> (res: ^HittableList) {

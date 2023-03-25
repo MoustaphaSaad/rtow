@@ -6,5 +6,5 @@ Ray :: struct {
 }
 
 ray_at :: proc(r: Ray, t: f32) -> Point3 {
-	return r.Orig + r.Dir * t
+	return r.Orig + r.Dir * v3_splat(t)
 }

@@ -15,7 +15,7 @@ Lambertian :: struct {
 
 lambertian_scatter :: proc(self: Lambertian, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
 	scatter_direction := rec.normal + random_unit_vector()
-	if vec3_near_zero(scatter_direction) {
+	if v3_near_zero(scatter_direction) {
 		scatter_direction = rec.normal
 	}
 	res.scattered = Ray{rec.p, scatter_direction}
@@ -31,7 +31,7 @@ Metal :: struct {
 
 metal_scatter :: proc(self: Metal, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
 	reflected := v3_reflect(v3_normalize(r.Dir), rec.normal)
-	res.scattered = Ray{rec.p, reflected + self.fuzz * random_in_unit_sphere()}
+	res.scattered = Ray{rec.p, reflected + v3_splat(self.fuzz) * random_in_unit_sphere()}
 	res.attenuation = self.albedo
 	scattered = v3_dot(res.scattered.Dir, rec.normal) > 0
 	return
