@@ -50,7 +50,8 @@ ray_color :: proc(r: Ray, world: ^HittableList, depth: int) -> Color {
 	}
 
 	if rec, hit := hittable_list_hit(world, r, 0.001, infinity); hit {
-		if res, scattered := rec.mat->scatter(r, rec); scattered {
+		mat := world.materials[rec.material_index]
+		if res, scattered := material_scatter(mat, r, rec); scattered {
 			return res.attenuation * ray_color(res.scattered, world, depth - 1)
 		}
 		target := rec.p + rec.normal + random_in_hemisphere(rec.normal)
@@ -64,11 +65,11 @@ ray_color :: proc(r: Ray, world: ^HittableList, depth: int) -> Color {
 random_scene :: proc() -> (res: ^HittableList) {
 	res = hittable_list_new()
 
-	ground_material := to_material(hittable_list_alloc(res, Lambertian{Color{0.5, 0.5, 0.5}}))
-	hittable_list_add(res, Sphere {
+	ground_material := hittable_list_add_material(res, Lambertian{Color{0.5, 0.5, 0.5}})
+	hittable_list_add_sphere(res, Sphere {
 		center = Point3{0, -1000, 0},
 		radius = 1000,
-		mat = ground_material,
+		material_index = ground_material,
 	})
 
 	for a in -11..<11 {
@@ -77,12 +78,12 @@ random_scene :: proc() -> (res: ^HittableList) {
 			center := Point3{f64(a) + 0.9*rand.float64(), 0.2, f64(b) + 0.9*rand.float64()}
 
 			if linalg.length(center - Point3{4, 0.2, 0}) > 0.9 {
-				sphere_material: Material
+				sphere_material: int
 
 				if choose_mat < 0.8 {
 					albedo := random_vec3() * random_vec3()
-					sphere_material = to_material(hittable_list_alloc(res, Lambertian{albedo}))
-					hittable_list_add(res, Sphere{
+					sphere_material = hittable_list_add_material(res, Lambertian{albedo})
+					hittable_list_add_sphere(res, Sphere{
 						center,
 						0.2,
 						sphere_material,
@@ -90,15 +91,15 @@ random_scene :: proc() -> (res: ^HittableList) {
 				} else if choose_mat < 0.95 {
 					albedo := rand.float64_range(0.5, 1)
 					fuzz := rand.float64_range(0, 0.5)
-					sphere_material = to_material(hittable_list_alloc(res, Metal{albedo, fuzz}))
-					hittable_list_add(res, Sphere{
+					sphere_material = hittable_list_add_material(res, Metal{albedo, fuzz})
+					hittable_list_add_sphere(res, Sphere{
 						center,
 						0.2,
 						sphere_material,
 					})
 				} else {
-					sphere_material = to_material(hittable_list_alloc(res, Dielectric{1.5}))
-					hittable_list_add(res, Sphere{
+					sphere_material = hittable_list_add_material(res, Dielectric{1.5})
+					hittable_list_add_sphere(res, Sphere{
 						center,
 						0.2,
 						sphere_material,
@@ -108,22 +109,22 @@ random_scene :: proc() -> (res: ^HittableList) {
 		}
 	}
 
-	material1 := to_material(hittable_list_alloc(res, Dielectric{1.5}))
-	hittable_list_add(res, Sphere{
+	material1 := hittable_list_add_material(res, Dielectric{1.5})
+	hittable_list_add_sphere(res, Sphere{
 		Point3{0, 1, 0},
 		1.0,
 		material1,
 	})
 
-	material2 := to_material(hittable_list_alloc(res, Lambertian{Color{0.4, 0.2, 0.1}}))
-	hittable_list_add(res, Sphere{
+	material2 := hittable_list_add_material(res, Lambertian{Color{0.4, 0.2, 0.1}})
+	hittable_list_add_sphere(res, Sphere{
 		Point3{-4, 1, 0},
 		1.0,
 		material2,
 	})
 
-	material3 := to_material(hittable_list_alloc(res, Metal{Color{0.7, 0.6, 0.5}, 0}))
-	hittable_list_add(res, Sphere{
+	material3 := hittable_list_add_material(res, Metal{Color{0.7, 0.6, 0.5}, 0})
+	hittable_list_add_sphere(res, Sphere{
 		Point3{4, 1, 0},
 		1.0,
 		material3,

@@ -3,34 +3,29 @@ package main
 import "core:fmt"
 
 HittableList :: struct {
-	allocations: [dynamic]rawptr,
+	materials: [dynamic]Material,
 	spheres: [dynamic]Sphere,
 }
 
 hittable_list_new :: proc() -> (res: ^HittableList) {
 	res = new(HittableList)
-	res.allocations = make([dynamic]rawptr)
+	res.materials = make([dynamic]Material)
 	res.spheres = make([dynamic]Sphere)
 	return
 }
 
 hittable_list_free :: proc(self: ^HittableList) {
-	for a in self.allocations {
-		free(a)
-	}
-	delete(self.allocations)
+	delete(self.materials)
 	delete(self.spheres)
 	free(self)
 }
 
-hittable_list_alloc :: proc(self: ^HittableList, d: $T) -> (res: ^T) {
-	res = new(T)
-	res^ = d
-	append(&self.allocations, res)
-	return res
+hittable_list_add_material :: proc(self: ^HittableList, m: Material) -> int {
+	append(&self.materials, m)
+	return len(self.materials) - 1
 }
 
-hittable_list_add :: proc(self: ^HittableList, s: Sphere) {
+hittable_list_add_sphere :: proc(self: ^HittableList, s: Sphere) {
 	append(&self.spheres, s)
 }
 

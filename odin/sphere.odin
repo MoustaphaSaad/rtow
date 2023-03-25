@@ -6,7 +6,7 @@ import "core:math/linalg"
 Sphere :: struct {
 	center: Point3,
 	radius: f64,
-	mat: Material,
+	material_index: int,
 }
 
 sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
@@ -36,6 +36,6 @@ sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, 
 	rec.p = ray_at(r, rec.t)
 	outward_normal := (rec.p - self.center) / self.radius
 	hit_record_set_face_normal(&rec, r, outward_normal)
-	rec.mat = self.mat
+	rec.material_index = self.material_index
 	return
 }
