@@ -5,11 +5,11 @@ import "core:math/linalg"
 
 Sphere :: struct {
 	center: Point3,
-	radius: f64,
+	radius: f32,
 	material_index: int,
 }
 
-sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
+sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f32) -> (rec: HitRecord, hit: bool) {
 	a := linalg.length2(r.Dir)
 	oc := r.Orig - self.center
 	half_b := linalg.dot(oc, r.Dir)

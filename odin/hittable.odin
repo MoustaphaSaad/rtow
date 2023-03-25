@@ -5,7 +5,7 @@ import "core:math/linalg"
 HitRecord :: struct {
 	p: Point3,
 	normal: Vec3,
-	t: f64,
+	t: f32,
 	front_face: bool,
 	material_index: int,
 }

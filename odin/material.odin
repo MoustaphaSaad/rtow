@@ -26,7 +26,7 @@ lambertian_scatter :: proc(self: Lambertian, r: Ray, rec: HitRecord) -> (res: Ma
 
 Metal :: struct {
 	albedo: Color,
-	fuzz: f64,
+	fuzz: f32,
 }
 
 metal_scatter :: proc(self: Metal, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
@@ -38,7 +38,7 @@ metal_scatter :: proc(self: Metal, r: Ray, rec: HitRecord) -> (res: MaterialReco
 }
 
 Dielectric :: struct {
-	ir: f64,
+	ir: f32,
 }
 
 dielectric_scatter :: proc(self: Dielectric, r: Ray, rec: HitRecord) -> (res: MaterialRecord, scattered: bool) {
@@ -54,7 +54,7 @@ dielectric_scatter :: proc(self: Dielectric, r: Ray, rec: HitRecord) -> (res: Ma
 
 	cannot_refract := refraction_ratio * sin_theta > 1
 	direction: Vec3
-	if cannot_refract || relfectance(cos_theta, refraction_ratio) > rand.float64() {
+	if cannot_refract || relfectance(cos_theta, refraction_ratio) > rand.float32() {
 		direction = linalg.reflect(unit_direction, rec.normal)
 	} else {
 		direction = linalg.refract(unit_direction, rec.normal, refraction_ratio)
@@ -64,7 +64,7 @@ dielectric_scatter :: proc(self: Dielectric, r: Ray, rec: HitRecord) -> (res: Ma
 	return
 }
 
-relfectance :: proc(cosine, ref_idx: f64) -> f64 {
+relfectance :: proc(cosine, ref_idx: f32) -> f32 {
 	r0 := (1 - ref_idx) / (1 + ref_idx)
 	r0 = r0*r0
 	return r0 + (1 - r0) * math.pow((1 - cosine), 5)

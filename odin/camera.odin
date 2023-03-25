@@ -7,10 +7,10 @@ Camera :: struct {
 	origin, lower_left_corner: Point3,
 	horizontal, vertical: Vec3,
 	u, v, w: Vec3,
-	lens_radius: f64,
+	lens_radius: f32,
 }
 
-new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio, aperture, focus_dist: f64) -> (cam: Camera) {
+new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio, aperture, focus_dist: f32) -> (cam: Camera) {
 	theta := degrees_to_radians(vfov)
 	h := math.tan(theta / 2)
 	viewport_height := 2 * h
@@ -29,7 +29,7 @@ new_camera :: proc(lookfrom, lookat: Point3, vup: Vec3, vfov, aspect_ratio, aper
 	return
 }
 
-camera_ray :: proc(self: Camera, s, t: f64) -> Ray {
+camera_ray :: proc(self: Camera, s, t: f32) -> Ray {
 	rd := self.lens_radius * random_in_unit_disk()
 	offset := self.u * rd.x + self.v * rd.y
 	return Ray {

@@ -9,7 +9,7 @@ import "core:math/linalg"
 import "core:math"
 import "core:math/rand"
 
-hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
+hit_sphere :: proc(center: Point3, radius: f32, r: Ray) -> f32 {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
 	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
@@ -37,10 +37,10 @@ hit_sphere :: proc(center: Point3, radius: f64, r: Ray) -> f64 {
 	}
 }
 
-infinity := math.inf_f64(1)
+infinity := math.inf_f32(1)
 pi :: 3.1415926535897932385
 
-degrees_to_radians :: proc(degrees: f64) -> f64 {
+degrees_to_radians :: proc(degrees: f32) -> f32 {
 	return degrees * pi / 180
 }
 
@@ -74,8 +74,8 @@ random_scene :: proc() -> (res: ^HittableList) {
 
 	for a in -11..<11 {
 		for b in -11..<11 {
-			choose_mat := rand.float64()
-			center := Point3{f64(a) + 0.9*rand.float64(), 0.2, f64(b) + 0.9*rand.float64()}
+			choose_mat := rand.float32()
+			center := Point3{f32(a) + 0.9*rand.float32(), 0.2, f32(b) + 0.9*rand.float32()}
 
 			if linalg.length(center - Point3{4, 0.2, 0}) > 0.9 {
 				sphere_material: int
@@ -89,8 +89,8 @@ random_scene :: proc() -> (res: ^HittableList) {
 						sphere_material,
 					})
 				} else if choose_mat < 0.95 {
-					albedo := rand.float64_range(0.5, 1)
-					fuzz := rand.float64_range(0, 0.5)
+					albedo := rand.float32_range(0.5, 1)
+					fuzz := rand.float32_range(0, 0.5)
 					sphere_material = hittable_list_add_material(res, Metal{albedo, fuzz})
 					hittable_list_add_sphere(res, Sphere{
 						center,
@@ -153,9 +153,9 @@ main :: proc() {
 	stderr := io.to_writer(bufio.writer_to_stream(&buffered_stderr))
 
 	// Image
-	aspect_ratio := 16.0 / 9.0
+	aspect_ratio : f32 = 16.0 / 9.0
 	image_width := 640
-	image_height := int(f64(image_width) / aspect_ratio)
+	image_height := int(f32(image_width) / aspect_ratio)
 	samples_per_pixel := 10
 	rays_count := image_width * image_height * samples_per_pixel
 	max_depth := 50
@@ -167,8 +167,8 @@ main :: proc() {
 	lookfrom := Point3{13, 2, 3}
 	lookat := Point3{0, 0, 0}
 	vup := Vec3{0, 1, 0}
-	dist_to_focus := 10.0
-	aperture := 0.1
+	dist_to_focus : f32 = 10.0
+	aperture : f32 = 0.1
 	cam := new_camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus)
 
 	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
@@ -186,13 +186,13 @@ main :: proc() {
 			start := time.now()
 			pixel_color := Color{0, 0, 0}
 			for s in 0 ..< samples_per_pixel {
-				u := (f64(i) + rand.float64()) / f64(image_width - 1)
-				v := (f64(j) + rand.float64()) / f64(image_height - 1)
+				u := (f32(i) + rand.float32()) / f32(image_width - 1)
+				v := (f32(j) + rand.float32()) / f32(image_height - 1)
 				r := camera_ray(cam, u, v)
 				pixel_color += ray_color(r, world, max_depth)
 			}
 			pixel_only += time.since(start)
-			write_color(stdout, pixel_color, f64(samples_per_pixel))
+			write_color(stdout, pixel_color, f32(samples_per_pixel))
 		}
 	}
 

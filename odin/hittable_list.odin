@@ -29,7 +29,7 @@ hittable_list_add_sphere :: proc(self: ^HittableList, s: Sphere) {
 	append(&self.spheres, s)
 }
 
-hittable_list_hit :: proc(self: ^HittableList, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
+hittable_list_hit :: proc(self: ^HittableList, r: Ray, t_min, t_max: f32) -> (rec: HitRecord, hit: bool) {
 	hit = false
 	closest_so_far := t_max
 

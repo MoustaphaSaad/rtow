@@ -7,16 +7,16 @@ import "core:builtin"
 import "core:math/rand"
 import "core:math/linalg"
 
-Vec3 :: [3]f64
+Vec3 :: [3]f32
 Color :: Vec3
 Point3 :: Vec3
 
 random_vec3 :: proc() -> Vec3 {
-	return Vec3{rand.float64(), rand.float64(), rand.float64()}
+	return Vec3{rand.float32(), rand.float32(), rand.float32()}
 }
 
-random_vec3_in_range :: proc(min, max: f64) -> Vec3 {
-	return Vec3{rand.float64_range(min, max), rand.float64_range(min, max), rand.float64_range(min, max)}
+random_vec3_in_range :: proc(min, max: f32) -> Vec3 {
+	return Vec3{rand.float32_range(min, max), rand.float32_range(min, max), rand.float32_range(min, max)}
 }
 
 random_in_unit_sphere :: proc() -> Vec3 {
@@ -45,7 +45,7 @@ vec3_near_zero :: proc(v: Vec3) -> bool {
 	return (math.abs(v[0]) < s) && (math.abs(v[1]) < s) && (math.abs(v[2]) < s)
 }
 
-write_color :: proc(out: io.Writer, c: Color, samples_per_pixel: f64) {
+write_color :: proc(out: io.Writer, c: Color, samples_per_pixel: f32) {
 	r := c.r
 	g := c.g
 	b := c.b
@@ -60,7 +60,7 @@ write_color :: proc(out: io.Writer, c: Color, samples_per_pixel: f64) {
 
 random_in_unit_disk :: proc() -> Vec3 {
 	for {
-		p := Vec3{rand.float64_range(-1, 1), rand.float64_range(-1, 1), 0}
+		p := Vec3{rand.float32_range(-1, 1), rand.float32_range(-1, 1), 0}
 		if linalg.length2(p) >= 1 { continue }
 		return p
 	}
