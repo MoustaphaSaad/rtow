@@ -44,12 +44,12 @@ degrees_to_radians :: proc(degrees: f64) -> f64 {
 	return degrees * pi / 180
 }
 
-ray_color :: proc(r: Ray, world: Hittable, depth: int) -> Color {
+ray_color :: proc(r: Ray, world: ^HittableList, depth: int) -> Color {
 	if depth <= 0 {
 		return Color{}
 	}
 
-	if rec, hit := world->hit(r, 0.001, infinity); hit {
+	if rec, hit := hittable_list_hit(world, r, 0.001, infinity); hit {
 		if res, scattered := rec.mat->scatter(r, rec); scattered {
 			return res.attenuation * ray_color(res.scattered, world, depth - 1)
 		}
@@ -155,7 +155,7 @@ main :: proc() {
 	aspect_ratio := 16.0 / 9.0
 	image_width := 640
 	image_height := int(f64(image_width) / aspect_ratio)
-	samples_per_pixel := 64
+	samples_per_pixel := 10
 	rays_count := image_width * image_height * samples_per_pixel
 	max_depth := 50
 
@@ -188,7 +188,7 @@ main :: proc() {
 				u := (f64(i) + rand.float64()) / f64(image_width - 1)
 				v := (f64(j) + rand.float64()) / f64(image_height - 1)
 				r := camera_ray(cam, u, v)
-				pixel_color += ray_color(r, to_hittable(world), max_depth)
+				pixel_color += ray_color(r, world, max_depth)
 			}
 			pixel_only += time.since(start)
 			write_color(stdout, pixel_color, f64(samples_per_pixel))

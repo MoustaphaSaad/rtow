@@ -9,7 +9,7 @@ Sphere :: struct {
 	mat: Material,
 }
 
-sphere_hit :: proc(self: ^Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
+sphere_hit :: proc(self: Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord, hit: bool) {
 	a := linalg.length2(r.Dir)
 	oc := r.Orig - self.center
 	half_b := linalg.dot(oc, r.Dir)
@@ -38,18 +38,4 @@ sphere_hit :: proc(self: ^Sphere, r: Ray, t_min, t_max: f64) -> (rec: HitRecord,
 	hit_record_set_face_normal(&rec, r, outward_normal)
 	rec.mat = self.mat
 	return
-}
-
-sphere_to_hittable :: proc(self: ^Sphere) -> Hittable {
-	return Hittable {
-		data = self,
-		vtable = &_sphere_vtable,
-	}
-}
-
-_sphere_vtable := Hittable_VTable {
-	hit = proc(self: Hittable, r: Ray, t_min, t_max: f64) -> (HitRecord, bool) {
-		sphere := (^Sphere)(self.data)
-		return sphere_hit(sphere, r, t_min, t_max)
-	},
 }
