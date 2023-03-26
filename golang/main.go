@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"math/rand"
 	"os"
 	"time"
 )
 
-func hitSphere(center Point3, radius float64, r Ray) float64 {
+func hitSphere(center Point3, radius Scalar, r Ray) Scalar {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
 	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
@@ -32,14 +30,13 @@ func hitSphere(center Point3, radius float64, r Ray) float64 {
 	if discriminant < 0 {
 		return -1
 	} else {
-		return (-halfB - math.Sqrt(discriminant)) / a
+		return (-halfB - Sqrt(discriminant)) / a
 	}
 }
 
-var infinity = math.Inf(1)
 const pi = 3.1415926535897932385
 
-func degressToRadians(degrees float64) float64 {
+func degressToRadians(degrees Scalar) Scalar {
 	return degrees * pi / 180
 }
 
@@ -70,7 +67,7 @@ func randomScene() HittableList {
 	for a := -11; a < 11; a++ {
 		for b := -11; b < 11; b++ {
 			chooseMat := RandomDouble();
-			center := Point3{float64(a) + 0.9*RandomDouble(), 0.2, float64(b) + 0.9*RandomDouble()}
+			center := Point3{Scalar(a) + 0.9*RandomDouble(), 0.2, Scalar(b) + 0.9*RandomDouble()}
 
 			if center.Sub(Point3{4, 0.2, 0}).Length() > 0.9 {
 				var sphereMaterial Material
@@ -110,8 +107,8 @@ func main() {
 	// Image
 	var aspectRatio = 16.0 / 9.0
 	var imageWidth = 640
-	var imageHeight = int(float64(imageWidth) / aspectRatio)
-	var samplesPerPixel = 64
+	var imageHeight = int(Scalar(imageWidth) / aspectRatio)
+	var samplesPerPixel = 10
 	var raysCount = imageWidth * imageHeight * samplesPerPixel
 	var maxDepth = 50
 
@@ -137,14 +134,14 @@ func main() {
 			start := time.Now()
 			pixelColor := Color{0, 0, 0}
 			for s := 0; s < samplesPerPixel; s++ {
-				u := (float64(i) + rand.Float64()) / float64(imageWidth - 1)
-				v := (float64(j) + rand.Float64()) / float64(imageHeight - 1)
+				u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
+				v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
 				r := cam.ray(u, v)
 				pixelColor = pixelColor.Add(rayColor(r, world, maxDepth))
 			}
 			pixelOnly += time.Since(start)
 
-			pixelColor.Write(os.Stdout, float64(samplesPerPixel))
+			pixelColor.Write(os.Stdout, Scalar(samplesPerPixel))
 		}
 	}
 

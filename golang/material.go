@@ -1,7 +1,5 @@
 package main
 
-import "math"
-
 type MaterialResult struct {
 	Attenuation Color
 	Scattered   Ray
@@ -33,7 +31,7 @@ func (l Lambertian) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scatter
 
 type Metal struct {
 	Albedo Color
-	Fuzz   float64
+	Fuzz   Scalar
 }
 
 func (m Metal) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
@@ -48,7 +46,7 @@ func (m Metal) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bo
 }
 
 type Dielectric struct {
-	IndexOfRefraction float64
+	IndexOfRefraction Scalar
 }
 
 func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
@@ -59,10 +57,10 @@ func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scatter
 	}
 
 	unit_direction := rIn.Dir.UnitVector()
-	cos_theta := math.Min(unit_direction.Negate().Dot(rec.Normal), 1)
-	sin_theta := math.Sqrt(1 - cos_theta*cos_theta)
+	cos_theta := Min(unit_direction.Negate().Dot(rec.Normal), 1)
+	sin_theta := Sqrt(1 - cos_theta*cos_theta)
 
-	cannot_refract := refraction_ratio * sin_theta > 1
+	cannot_refract := refraction_ratio*sin_theta > 1
 	var direction Vec3
 	if cannot_refract || Reflectance(cos_theta, refraction_ratio) > RandomDouble() {
 		direction = unit_direction.Reflect(rec.Normal)
@@ -75,8 +73,8 @@ func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scatter
 	return
 }
 
-func Reflectance(cosine, ref_idx float64) float64 {
+func Reflectance(cosine, ref_idx Scalar) Scalar {
 	r0 := (1 - ref_idx) / (1 + ref_idx)
 	r0 = r0 * r0
-	return r0 + (1 - r0) * math.Pow((1 - cosine), 5)
+	return r0 + (1-r0)*Pow((1-cosine), 5)
 }

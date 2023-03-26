@@ -1,14 +1,12 @@
 package main
 
-import "math"
-
 type Sphere struct {
 	Center Point3
-	Radius float64
+	Radius Scalar
 	Mat    Material
 }
 
-func (s Sphere) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
+func (s Sphere) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
 	a := r.Dir.LengthSquared()
 	oc := r.Orig.Sub(s.Center)
 	halfB := oc.Dot(r.Dir)
@@ -18,12 +16,12 @@ func (s Sphere) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
 		hit = false
 		return
 	}
-	sqrtd := math.Sqrt(discriminant)
+	sqrtd := Sqrt(discriminant)
 
 	// find the nearest of 2 possible solutions
-	root := (-halfB - sqrtd) / a;
+	root := (-halfB - sqrtd) / a
 	if root < tMin || root > tMax {
-		root = (-halfB + sqrtd) / a;
+		root = (-halfB + sqrtd) / a
 		if root < tMin || root > tMax {
 			hit = false
 			return

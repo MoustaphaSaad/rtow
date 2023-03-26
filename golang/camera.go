@@ -1,17 +1,15 @@
 package main
 
-import "math"
-
 type Camera struct {
 	Origin, LowerLeftCorner Point3
 	Horizontal, Vertical    Vec3
-	U, V, W Vec3
-	LensRadius float64
+	U, V, W                 Vec3
+	LensRadius              Scalar
 }
 
-func NewCamera(lookfrom, lookat Point3, vup Vec3, vfov, aspectRatio, aperture, focusDist float64) (cam Camera) {
+func NewCamera(lookfrom, lookat Point3, vup Vec3, vfov, aspectRatio, aperture, focusDist Scalar) (cam Camera) {
 	theta := degressToRadians(vfov)
-	h := math.Tan(theta / 2)
+	h := Tan(theta / 2)
 	viewportHeight := 2 * h
 	viewportWidth := aspectRatio * viewportHeight
 
@@ -24,11 +22,11 @@ func NewCamera(lookfrom, lookat Point3, vup Vec3, vfov, aspectRatio, aperture, f
 	cam.Vertical = cam.V.Mul(viewportHeight).Mul(focusDist)
 	cam.LowerLeftCorner = cam.Origin.Sub(cam.Horizontal.Div(2)).Sub(cam.Vertical.Div(2)).Sub(cam.W.Mul(focusDist))
 
-	cam.LensRadius = aperture / 2;
+	cam.LensRadius = aperture / 2
 	return
 }
 
-func (cam Camera) ray(s, t float64) Ray {
+func (cam Camera) ray(s, t Scalar) Ray {
 	rd := RandomInUnitDisk().Mul(cam.LensRadius)
 	offset := cam.U.Mul(rd.X()).Add(cam.V.Mul(rd.Y()))
 

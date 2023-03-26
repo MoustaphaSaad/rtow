@@ -10,7 +10,7 @@ func (list *HittableList) Clear() {
 	*list = nil
 }
 
-func (list HittableList) Hit(r Ray, tMin, tMax float64) (rec HitRecord, hit bool) {
+func (list HittableList) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
 	hit = false
 	closestSoFar := tMax
 

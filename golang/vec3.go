@@ -7,17 +7,55 @@ import (
 	"math/rand"
 )
 
-type Vec3 [3]float64
+type Scalar = float64
 
-func (v Vec3) X() float64 {
+var infinity = math.Inf(1)
+
+func Tan(v Scalar) Scalar {
+	return Scalar(math.Tan(float64(v)))
+}
+
+func Sqrt(v Scalar) Scalar {
+	return Scalar(math.Sqrt(float64(v)))
+}
+
+func Abs(v Scalar) Scalar {
+	if v < 0 {
+		return v * -1
+	} else {
+		return v
+	}
+}
+
+func Min(v1, v2 Scalar) Scalar {
+	if v1 < v2 {
+		return v1
+	} else {
+		return v2
+	}
+}
+
+func Pow(b, e Scalar) Scalar {
+	return Scalar(math.Pow(float64(b), float64(e)))
+}
+
+func Rand() Scalar {
+	return rand.Float64()
+}
+
+
+
+type Vec3 [3]Scalar
+
+func (v Vec3) X() Scalar {
 	return v[0]
 }
 
-func (v Vec3) Y() float64 {
+func (v Vec3) Y() Scalar {
 	return v[1]
 }
 
-func (v Vec3) Z() float64 {
+func (v Vec3) Z() Scalar {
 	return v[2]
 }
 
@@ -42,7 +80,7 @@ func (v Vec3) Sub(u Vec3) (res Vec3) {
 	return
 }
 
-func (v Vec3) Mul(t float64) (res Vec3) {
+func (v Vec3) Mul(t Scalar) (res Vec3) {
 	res[0] = v[0] * t
 	res[1] = v[1] * t
 	res[2] = v[2] * t
@@ -56,7 +94,7 @@ func (v Vec3) HMul(u Vec3) (res Vec3) {
 	return
 }
 
-func (v Vec3) Dot(u Vec3) float64 {
+func (v Vec3) Dot(u Vec3) Scalar {
 	return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
 }
 
@@ -67,15 +105,15 @@ func (v Vec3) Cross(u Vec3) (res Vec3) {
 	return
 }
 
-func (v Vec3) Div(t float64) (res Vec3) {
+func (v Vec3) Div(t Scalar) (res Vec3) {
 	return v.Mul(1 / t)
 }
 
-func (v Vec3) Length() float64 {
-	return math.Sqrt(v.LengthSquared())
+func (v Vec3) Length() Scalar {
+	return Sqrt(v.LengthSquared())
 }
 
-func (v Vec3) LengthSquared() float64 {
+func (v Vec3) LengthSquared() Scalar {
 	return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]
 }
 
@@ -85,33 +123,33 @@ func (v Vec3) UnitVector() Vec3 {
 
 func (v Vec3) NearZero() bool {
 	const s = 1e-8
-	return (math.Abs(v[0]) < s) && (math.Abs(v[1]) < s) && (math.Abs(v[2]) < s)
+	return (Abs(v[0]) < s) && (Abs(v[1]) < s) && (Abs(v[2]) < s)
 }
 
 func (v Vec3) Reflect(normal Vec3) Vec3 {
 	return v.Sub(normal.Mul(v.Dot(normal) * 2))
 }
 
-func (uv Vec3) Refract(normal Vec3, etai_over_etat float64) Vec3 {
-	cos_theta := math.Min(uv.Negate().Dot(normal), 1)
+func (uv Vec3) Refract(normal Vec3, etai_over_etat Scalar) Vec3 {
+	cos_theta := Min(uv.Negate().Dot(normal), 1)
 	r_out_perp := uv.Add(normal.Mul(cos_theta)).Mul(etai_over_etat)
-	r_out_parallel := normal.Mul(-math.Sqrt(math.Abs(1 - r_out_perp.LengthSquared())))
+	r_out_parallel := normal.Mul(-Sqrt(Abs(1 - r_out_perp.LengthSquared())))
 	return r_out_perp.Add(r_out_parallel)
 }
 
-func RandomDouble() float64 {
-	return rand.Float64()
+func RandomDouble() Scalar {
+	return Rand()
 }
 
-func RandomDoubleInRange(min, max float64) float64 {
+func RandomDoubleInRange(min, max Scalar) Scalar {
 	return min + RandomDouble() * (max - min)
 }
 
 func RandomVec3() Vec3 {
-	return Vec3{rand.Float64(), rand.Float64(), rand.Float64()}
+	return Vec3{Rand(), Rand(), Rand()}
 }
 
-func RandomVec3InRange(min, max float64) Vec3 {
+func RandomVec3InRange(min, max Scalar) Vec3 {
 	return Vec3{RandomDoubleInRange(min, max), RandomDoubleInRange(min, max), RandomDoubleInRange(min, max)}
 }
 
@@ -139,21 +177,21 @@ func RandomInHemisphere(normal Vec3) Vec3 {
 type Point3 = Vec3
 type Color = Vec3
 
-func Clamp(x, min, max float64) float64 {
+func Clamp(x, min, max Scalar) Scalar {
 	if x < min { return min }
 	if x > max { return max }
 	return x
 }
 
-func (c Color) Write(out io.Writer, samplesPerPixel float64) {
+func (c Color) Write(out io.Writer, samplesPerPixel Scalar) {
 	r := c.X()
 	g := c.Y()
 	b := c.Z()
 
 	scale := 1.0 / samplesPerPixel
-	r = math.Sqrt(scale * r)
-	g = math.Sqrt(scale * g)
-	b = math.Sqrt(scale * b)
+	r = Sqrt(scale * r)
+	g = Sqrt(scale * g)
+	b = Sqrt(scale * b)
 	fmt.Fprintf(
 		out,
 		"%v %v %v\n",
