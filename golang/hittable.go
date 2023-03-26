@@ -16,7 +16,3 @@ func (h *HitRecord) setFaceNormal(r Ray, outwardNormal Vec3) {
 		h.Normal = outwardNormal.Negate()
 	}
 }
-
-type Hittable interface {
-	Hit(r Ray, tMin, tMax Scalar) (HitRecord, bool)
-}

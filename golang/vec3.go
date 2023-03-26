@@ -7,9 +7,9 @@ import (
 	"math/rand"
 )
 
-type Scalar = float64
+type Scalar = float32
 
-var infinity = math.Inf(1)
+var infinity = Scalar(math.Inf(1))
 
 func Tan(v Scalar) Scalar {
 	return Scalar(math.Tan(float64(v)))
@@ -40,7 +40,7 @@ func Pow(b, e Scalar) Scalar {
 }
 
 func Rand() Scalar {
-	return rand.Float64()
+	return rand.Float32()
 }
 
 

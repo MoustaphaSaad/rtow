@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
+	"runtime/pprof"
 	"time"
 )
 
@@ -40,7 +43,7 @@ func degressToRadians(degrees Scalar) Scalar {
 	return degrees * pi / 180
 }
 
-func rayColor(r Ray, world Hittable, depth int) Color {
+func rayColor(r Ray, world *HittableList, depth int) Color {
 	if depth <= 0 {
 		return Color{}
 	}
@@ -101,11 +104,23 @@ func randomScene() HittableList {
 	return world
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	start := time.Now()
 
 	// Image
-	var aspectRatio = 16.0 / 9.0
+	var aspectRatio = Scalar(16.0) / Scalar(9.0)
 	var imageWidth = 640
 	var imageHeight = int(Scalar(imageWidth) / aspectRatio)
 	var samplesPerPixel = 10
@@ -119,8 +134,8 @@ func main() {
 	lookFrom := Point3{13, 2, 3}
 	lookAt := Point3{0, 0, 0}
 	vUp := Vec3{0, 1, 0}
-	distToFocus := 10.0
-	aperture := 0.1
+	distToFocus := Scalar(10.0)
+	aperture := Scalar(0.1)
 	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
@@ -137,7 +152,7 @@ func main() {
 				u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
 				v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
 				r := cam.ray(u, v)
-				pixelColor = pixelColor.Add(rayColor(r, world, maxDepth))
+				pixelColor = pixelColor.Add(rayColor(r, &world, maxDepth))
 			}
 			pixelOnly += time.Since(start)
 
