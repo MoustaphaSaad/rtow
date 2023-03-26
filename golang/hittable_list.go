@@ -1,11 +1,17 @@
 package main
 
 type HittableList struct {
-	spheres []Sphere
+	materials []Material
+	spheres   []Sphere
 }
 
-func (list *HittableList) Add(h Sphere) {
+func (list *HittableList) AddSphere(h Sphere) {
 	list.spheres = append(list.spheres, h)
+}
+
+func (list *HittableList) AddMaterial(m Material) int {
+	list.materials = append(list.materials, m)
+	return len(list.materials) - 1
 }
 
 func (list *HittableList) Clear() {

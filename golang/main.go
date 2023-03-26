@@ -49,7 +49,8 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 	}
 
 	if rec, hit := world.Hit(r, 0.001, infinity); hit {
-		if res, scattered := rec.Mat.Scatter(r, rec); scattered {
+		m := &world.materials[rec.MaterialIndex]
+		if res, scattered := m.Scatter(r, rec); scattered {
 			return res.Attenuation.HMul(rayColor(res.Scattered, world, depth - 1))
 		}
 		return Color{}
@@ -64,8 +65,8 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 func randomScene() HittableList {
 	var world HittableList
 
-	groundMaterial := Lambertian{Color{0.5, 0.5, 0.5}}
-	world.Add(Sphere{Point3{0, -1000, 0}, 1000, groundMaterial})
+	groundMaterial := world.AddMaterial(Lambertian(Color{0.5, 0.5, 0.5}))
+	world.AddSphere(Sphere{Point3{0, -1000, 0}, 1000, groundMaterial})
 
 	for a := -11; a < 11; a++ {
 		for b := -11; b < 11; b++ {
@@ -73,33 +74,33 @@ func randomScene() HittableList {
 			center := Point3{Scalar(a) + 0.9*RandomDouble(), 0.2, Scalar(b) + 0.9*RandomDouble()}
 
 			if center.Sub(Point3{4, 0.2, 0}).Length() > 0.9 {
-				var sphereMaterial Material
+				var sphereMaterial int
 
 				if chooseMat < 0.8 {
 					albedo := RandomVec3()
-					sphereMaterial = Lambertian{albedo}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Lambertian(albedo))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else if chooseMat < 0.95 {
 					albedo := RandomVec3InRange(0.5, 1)
 					fuzz := RandomDoubleInRange(0, 0.5)
-					sphereMaterial = Metal{albedo, fuzz}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Metal(albedo, fuzz))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else {
-					sphereMaterial = Dielectric{1.5}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Dielectric(1.5))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				}
 			}
 		}
 	}
 
-	material1 := Dielectric{1.5}
-	world.Add(Sphere{Point3{0, 1, 0}, 1.0, material1})
+	material1 := world.AddMaterial(Dielectric(1.5))
+	world.AddSphere(Sphere{Point3{0, 1, 0}, 1.0, material1})
 
-	material2 := Lambertian{Color{0.4, 0.2, 0.1}}
-	world.Add(Sphere{Point3{-4, 1, 0}, 1.0, material2})
+	material2 := world.AddMaterial(Lambertian(Color{0.4, 0.2, 0.1}))
+	world.AddSphere(Sphere{Point3{-4, 1, 0}, 1.0, material2})
 
-	material3 := Metal{Color{0.7, 0.6, 0.5}, 0}
-	world.Add(Sphere{Point3{4, 1, 0}, 1.0, material3})
+	material3 := world.AddMaterial(Metal(Color{0.7, 0.6, 0.5}, 0))
+	world.AddSphere(Sphere{Point3{4, 1, 0}, 1.0, material3})
 
 	return world
 }

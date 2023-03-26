@@ -1,11 +1,11 @@
 package main
 
 type HitRecord struct {
-	P         Point3
-	Normal    Vec3
-	T         Scalar
-	FrontFace bool
-	Mat       Material
+	P             Point3
+	Normal        Vec3
+	T             Scalar
+	FrontFace     bool
+	MaterialIndex int
 }
 
 func (h *HitRecord) setFaceNormal(r Ray, outwardNormal Vec3) {

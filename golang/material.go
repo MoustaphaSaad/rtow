@@ -5,15 +5,55 @@ type MaterialResult struct {
 	Scattered   Ray
 }
 
-type Material interface {
-	Scatter(rIn Ray, rec HitRecord) (MaterialResult, bool)
+type MaterialKind int
+
+const (
+	MaterialKindLambertian MaterialKind = iota
+	MaterialKindMetal
+	MaterialKindDielectric
+)
+
+type Material struct {
+	Kind              MaterialKind
+	Albedo            Color
+	Fuzz              Scalar
+	IndexOfRefraction Scalar
 }
 
-type Lambertian struct {
-	Albedo Color
+func Lambertian(albedo Color) (res Material) {
+	res.Kind = MaterialKindLambertian
+	res.Albedo = albedo
+	return
 }
 
-func (l Lambertian) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func Metal(albedo Color, fuzz Scalar) (res Material) {
+	res.Kind = MaterialKindMetal
+	res.Albedo = albedo
+	res.Fuzz = fuzz
+	return
+}
+
+func Dielectric(indexOfRefraction Scalar) (res Material) {
+	res.Kind = MaterialKindDielectric
+	res.IndexOfRefraction = indexOfRefraction
+	return
+}
+
+func (m *Material) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+	switch m.Kind {
+	case MaterialKindLambertian:
+		return m.ScatterLambertian(rIn, rec)
+	case MaterialKindMetal:
+		return m.ScatterMetal(rIn, rec)
+	case MaterialKindDielectric:
+		return m.ScatterDielectric(rIn, rec)
+	default:
+		scattered = false
+		return
+	}
+}
+
+func (m *Material) ScatterLambertian(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
 	scatterDirection := rec.Normal.Add(RandomUnitVector())
 
 	if scatterDirection.NearZero() {
@@ -24,17 +64,12 @@ func (l Lambertian) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scatter
 		Orig: rec.P,
 		Dir:  scatterDirection,
 	}
-	res.Attenuation = l.Albedo
+	res.Attenuation = m.Albedo
 	scattered = true
 	return
 }
 
-type Metal struct {
-	Albedo Color
-	Fuzz   Scalar
-}
-
-func (m Metal) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterMetal(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
 	reflected := rIn.Dir.UnitVector().Reflect(rec.Normal)
 	res.Scattered = Ray{
 		Orig: rec.P,
@@ -45,15 +80,11 @@ func (m Metal) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bo
 	return
 }
 
-type Dielectric struct {
-	IndexOfRefraction Scalar
-}
-
-func (d Dielectric) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterDielectric(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
 	res.Attenuation = Color{1, 1, 1}
-	refraction_ratio := d.IndexOfRefraction
+	refraction_ratio := m.IndexOfRefraction
 	if rec.FrontFace {
-		refraction_ratio = 1 / d.IndexOfRefraction
+		refraction_ratio = 1 / m.IndexOfRefraction
 	}
 
 	unit_direction := rIn.Dir.UnitVector()

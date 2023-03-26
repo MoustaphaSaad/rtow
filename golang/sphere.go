@@ -1,9 +1,9 @@
 package main
 
 type Sphere struct {
-	Center Point3
-	Radius Scalar
-	Mat    Material
+	Center        Point3
+	Radius        Scalar
+	MaterialIndex int
 }
 
 func (s Sphere) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
@@ -33,6 +33,6 @@ func (s Sphere) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
 	rec.P = r.At(rec.T)
 	outwardNormal := rec.P.Sub(s.Center).Div(s.Radius)
 	rec.setFaceNormal(r, outwardNormal)
-	rec.Mat = s.Mat
+	rec.MaterialIndex = s.MaterialIndex
 	return
 }
