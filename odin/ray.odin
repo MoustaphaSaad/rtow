@@ -5,6 +5,6 @@ Ray :: struct {
 	Dir:  Vec3,
 }
 
-ray_at :: proc(r: Ray, t: f64) -> Point3 {
-	return r.Orig + r.Dir * t
+ray_at :: proc(r: Ray, t: f32) -> Point3 {
+	return r.Orig + r.Dir * v3_splat(t)
 }
