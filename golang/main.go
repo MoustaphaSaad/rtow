@@ -1,14 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"math"
-	"math/rand"
+	"log"
 	"os"
+	"runtime/pprof"
 	"time"
 )
 
-func hitSphere(center Point3, radius float64, r Ray) float64 {
+func hitSphere(center Point3, radius Scalar, r Ray) Scalar {
 	// sphere around arbitrary center equation is
 	// P is a point in 3D space
 	// (P - center)^2 = radius^2 -> (P.x - center.x)^2 + (P.y - center.y)^2 + (P.z - center.z)^2 = radius^2
@@ -32,24 +33,24 @@ func hitSphere(center Point3, radius float64, r Ray) float64 {
 	if discriminant < 0 {
 		return -1
 	} else {
-		return (-halfB - math.Sqrt(discriminant)) / a
+		return (-halfB - Sqrt(discriminant)) / a
 	}
 }
 
-var infinity = math.Inf(1)
 const pi = 3.1415926535897932385
 
-func degressToRadians(degrees float64) float64 {
+func degressToRadians(degrees Scalar) Scalar {
 	return degrees * pi / 180
 }
 
-func rayColor(r Ray, world Hittable, depth int) Color {
+func rayColor(r Ray, world *HittableList, depth int) Color {
 	if depth <= 0 {
 		return Color{}
 	}
 
 	if rec, hit := world.Hit(r, 0.001, infinity); hit {
-		if res, scattered := rec.Mat.Scatter(r, rec); scattered {
+		m := &world.materials[rec.MaterialIndex]
+		if res, scattered := m.Scatter(r, rec); scattered {
 			return res.Attenuation.HMul(rayColor(res.Scattered, world, depth - 1))
 		}
 		return Color{}
@@ -64,54 +65,66 @@ func rayColor(r Ray, world Hittable, depth int) Color {
 func randomScene() HittableList {
 	var world HittableList
 
-	groundMaterial := Lambertian{Color{0.5, 0.5, 0.5}}
-	world.Add(Sphere{Point3{0, -1000, 0}, 1000, groundMaterial})
+	groundMaterial := world.AddMaterial(Lambertian(Color{0.5, 0.5, 0.5}))
+	world.AddSphere(Sphere{Point3{0, -1000, 0}, 1000, groundMaterial})
 
 	for a := -11; a < 11; a++ {
 		for b := -11; b < 11; b++ {
 			chooseMat := RandomDouble();
-			center := Point3{float64(a) + 0.9*RandomDouble(), 0.2, float64(b) + 0.9*RandomDouble()}
+			center := Point3{Scalar(a) + 0.9*RandomDouble(), 0.2, Scalar(b) + 0.9*RandomDouble()}
 
 			if center.Sub(Point3{4, 0.2, 0}).Length() > 0.9 {
-				var sphereMaterial Material
+				var sphereMaterial int
 
 				if chooseMat < 0.8 {
 					albedo := RandomVec3()
-					sphereMaterial = Lambertian{albedo}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Lambertian(albedo))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else if chooseMat < 0.95 {
 					albedo := RandomVec3InRange(0.5, 1)
 					fuzz := RandomDoubleInRange(0, 0.5)
-					sphereMaterial = Metal{albedo, fuzz}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Metal(albedo, fuzz))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else {
-					sphereMaterial = Dielectric{1.5}
-					world.Add(Sphere{center, 0.2, sphereMaterial})
+					sphereMaterial = world.AddMaterial(Dielectric(1.5))
+					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				}
 			}
 		}
 	}
 
-	material1 := Dielectric{1.5}
-	world.Add(Sphere{Point3{0, 1, 0}, 1.0, material1})
+	material1 := world.AddMaterial(Dielectric(1.5))
+	world.AddSphere(Sphere{Point3{0, 1, 0}, 1.0, material1})
 
-	material2 := Lambertian{Color{0.4, 0.2, 0.1}}
-	world.Add(Sphere{Point3{-4, 1, 0}, 1.0, material2})
+	material2 := world.AddMaterial(Lambertian(Color{0.4, 0.2, 0.1}))
+	world.AddSphere(Sphere{Point3{-4, 1, 0}, 1.0, material2})
 
-	material3 := Metal{Color{0.7, 0.6, 0.5}, 0}
-	world.Add(Sphere{Point3{4, 1, 0}, 1.0, material3})
+	material3 := world.AddMaterial(Metal(Color{0.7, 0.6, 0.5}, 0))
+	world.AddSphere(Sphere{Point3{4, 1, 0}, 1.0, material3})
 
 	return world
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	start := time.Now()
 
 	// Image
-	var aspectRatio = 16.0 / 9.0
+	var aspectRatio = Scalar(16.0) / Scalar(9.0)
 	var imageWidth = 640
-	var imageHeight = int(float64(imageWidth) / aspectRatio)
-	var samplesPerPixel = 64
+	var imageHeight = int(Scalar(imageWidth) / aspectRatio)
+	var samplesPerPixel = 10
 	var raysCount = imageWidth * imageHeight * samplesPerPixel
 	var maxDepth = 50
 
@@ -122,8 +135,8 @@ func main() {
 	lookFrom := Point3{13, 2, 3}
 	lookAt := Point3{0, 0, 0}
 	vUp := Vec3{0, 1, 0}
-	distToFocus := 10.0
-	aperture := 0.1
+	distToFocus := Scalar(10.0)
+	aperture := Scalar(0.1)
 	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
 	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
@@ -137,14 +150,14 @@ func main() {
 			start := time.Now()
 			pixelColor := Color{0, 0, 0}
 			for s := 0; s < samplesPerPixel; s++ {
-				u := (float64(i) + rand.Float64()) / float64(imageWidth - 1)
-				v := (float64(j) + rand.Float64()) / float64(imageHeight - 1)
+				u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
+				v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
 				r := cam.ray(u, v)
-				pixelColor = pixelColor.Add(rayColor(r, world, maxDepth))
+				pixelColor = pixelColor.Add(rayColor(r, &world, maxDepth))
 			}
 			pixelOnly += time.Since(start)
 
-			pixelColor.Write(os.Stdout, float64(samplesPerPixel))
+			pixelColor.Write(os.Stdout, Scalar(samplesPerPixel))
 		}
 	}
 

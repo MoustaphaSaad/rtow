@@ -1,11 +1,11 @@
 package main
 
 type HitRecord struct {
-	P         Point3
-	Normal    Vec3
-	T         float64
-	FrontFace bool
-	Mat       Material
+	P             Point3
+	Normal        Vec3
+	T             Scalar
+	FrontFace     bool
+	MaterialIndex int
 }
 
 func (h *HitRecord) setFaceNormal(r Ray, outwardNormal Vec3) {
@@ -15,8 +15,4 @@ func (h *HitRecord) setFaceNormal(r Ray, outwardNormal Vec3) {
 	} else {
 		h.Normal = outwardNormal.Negate()
 	}
-}
-
-type Hittable interface {
-	Hit(r Ray, tMin, tMax float64) (HitRecord, bool)
 }
