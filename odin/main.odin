@@ -152,6 +152,9 @@ main :: proc() {
 	}
 	stderr := io.to_writer(bufio.writer_to_stream(&buffered_stderr))
 
+	// control the randomness
+	rand.set_global_seed(42)
+
 	// Image
 	aspect_ratio : f32 = 16.0 / 9.0
 	image_width := 640
