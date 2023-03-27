@@ -1,10 +1,5 @@
 package main
 
-type MaterialResult struct {
-	Attenuation Color
-	Scattered   Ray
-}
-
 type MaterialKind int
 
 const (
@@ -39,7 +34,7 @@ func Dielectric(indexOfRefraction Scalar) (res Material) {
 	return
 }
 
-func (m *Material) Scatter(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) Scatter(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	switch m.Kind {
 	case MaterialKindLambertian:
 		return m.ScatterLambertian(rIn, rec)
@@ -48,40 +43,40 @@ func (m *Material) Scatter(rIn Ray, rec *HitRecord) (res MaterialResult, scatter
 	case MaterialKindDielectric:
 		return m.ScatterDielectric(rIn, rec)
 	default:
-		scattered = false
 		return
 	}
 }
 
-func (m *Material) ScatterLambertian(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterLambertian(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	scatterDirection := rec.Normal.Add(RandomUnitVector())
 
 	if scatterDirection.NearZero() {
 		scatterDirection = rec.Normal
 	}
 
-	res.Scattered = Ray{
+	scattered = &Ray{
 		Orig: rec.P,
 		Dir:  scatterDirection,
 	}
-	res.Attenuation = m.Albedo
-	scattered = true
+	attenuation = m.Albedo
 	return
 }
 
-func (m *Material) ScatterMetal(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterMetal(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	reflected := rIn.Dir.UnitVector().Reflect(rec.Normal)
-	res.Scattered = Ray{
-		Orig: rec.P,
-		Dir:  reflected.Add(RandomInUnitSphere().Mul(m.Fuzz)),
+	dir := reflected.Add(RandomInUnitSphere().Mul(m.Fuzz))
+	if dir.Dot(rec.Normal) > 0 {
+		scattered = &Ray{
+			Orig: rec.P,
+			Dir:  dir,
+		}
 	}
-	res.Attenuation = m.Albedo
-	scattered = res.Scattered.Dir.Dot(rec.Normal) > 0
+	attenuation = m.Albedo
 	return
 }
 
-func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
-	res.Attenuation = Color{1, 1, 1}
+func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
+	attenuation = Color{1, 1, 1}
 	refraction_ratio := m.IndexOfRefraction
 	if rec.FrontFace {
 		refraction_ratio = 1 / m.IndexOfRefraction
@@ -99,8 +94,7 @@ func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (res MaterialResul
 		direction = unit_direction.Refract(rec.Normal, refraction_ratio)
 	}
 
-	res.Scattered = Ray{rec.P, direction}
-	scattered = true
+	scattered = &Ray{rec.P, direction}
 	return
 }
 
