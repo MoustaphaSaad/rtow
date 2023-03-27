@@ -47,18 +47,6 @@ func Rand() Scalar {
 
 type Vec3 [3]Scalar
 
-func (v Vec3) X() Scalar {
-	return v[0]
-}
-
-func (v Vec3) Y() Scalar {
-	return v[1]
-}
-
-func (v Vec3) Z() Scalar {
-	return v[2]
-}
-
 func (v Vec3) Negate() (res Vec3) {
 	res[0] = -v[0]
 	res[1] = -v[1]
@@ -184,9 +172,9 @@ func Clamp(x, min, max Scalar) Scalar {
 }
 
 func (c Color) Write(out io.Writer, samplesPerPixel Scalar) {
-	r := c.X()
-	g := c.Y()
-	b := c.Z()
+	r := c[0]
+	g := c[1]
+	b := c[2]
 
 	scale := 1.0 / samplesPerPixel
 	r = Sqrt(scale * r)

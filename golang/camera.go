@@ -28,7 +28,7 @@ func NewCamera(lookfrom, lookat Point3, vup Vec3, vfov, aspectRatio, aperture, f
 
 func (cam Camera) ray(s, t Scalar) Ray {
 	rd := RandomInUnitDisk().Mul(cam.LensRadius)
-	offset := cam.U.Mul(rd.X()).Add(cam.V.Mul(rd.Y()))
+	offset := cam.U.Mul(rd[0]).Add(cam.V.Mul(rd[1]))
 
 	return Ray{
 		Orig: cam.Origin.Add(offset),
