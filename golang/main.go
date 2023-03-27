@@ -57,7 +57,7 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 		return Color{}
 	}
 	unitDirection := r.Dir.UnitVector()
-	t := 0.5 * (unitDirection[1] + 1)
+	t := 0.5 * (unitDirection.Y + 1)
 	startColor := Color{1, 1, 1}
 	endColor := Color{0.5, 0.7, 1}
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))

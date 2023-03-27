@@ -45,51 +45,53 @@ func Rand() Scalar {
 
 
 
-type Vec3 [3]Scalar
+type Vec3 struct {
+	X, Y, Z Scalar
+}
 
 func (v Vec3) Negate() (res Vec3) {
-	res[0] = -v[0]
-	res[1] = -v[1]
-	res[2] = -v[2]
+	res.X = -v.X
+	res.Y = -v.Y
+	res.Z = -v.Z
 	return
 }
 
 func (v Vec3) Add(u Vec3) (res Vec3) {
-	res[0] = v[0] + u[0]
-	res[1] = v[1] + u[1]
-	res[2] = v[2] + u[2]
+	res.X = v.X + u.X
+	res.Y = v.Y + u.Y
+	res.Z = v.Z + u.Z
 	return
 }
 
 func (v Vec3) Sub(u Vec3) (res Vec3) {
-	res[0] = v[0] - u[0]
-	res[1] = v[1] - u[1]
-	res[2] = v[2] - u[2]
+	res.X = v.X - u.X
+	res.Y = v.Y - u.Y
+	res.Z = v.Z - u.Z
 	return
 }
 
 func (v Vec3) Mul(t Scalar) (res Vec3) {
-	res[0] = v[0] * t
-	res[1] = v[1] * t
-	res[2] = v[2] * t
+	res.X = v.X * t
+	res.Y = v.Y * t
+	res.Z = v.Z * t
 	return
 }
 
 func (v Vec3) HMul(u Vec3) (res Vec3) {
-	res[0] = v[0] * u[0]
-	res[1] = v[1] * u[1]
-	res[2] = v[2] * u[2]
+	res.X = v.X * u.X
+	res.Y = v.Y * u.Y
+	res.Z = v.Z * u.Z
 	return
 }
 
 func (v Vec3) Dot(u Vec3) Scalar {
-	return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
+	return u.X * v.X + u.Y * v.Y + u.Z * v.Z
 }
 
 func (v Vec3) Cross(u Vec3) (res Vec3) {
-	res[0] = v[1] * u[2] - v[2] * u[1]
-	res[1] = v[2] * u[0] - v[0] * u[2]
-	res[2] = v[0] * u[1] - v[1] * u[0]
+	res.X = v.Y * u.Z - v.Z * u.Y
+	res.Y = v.Z * u.X - v.X * u.Z
+	res.Z = v.X * u.Y - v.Y * u.X
 	return
 }
 
@@ -102,7 +104,7 @@ func (v Vec3) Length() Scalar {
 }
 
 func (v Vec3) LengthSquared() Scalar {
-	return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]
+	return v.X * v.X + v.Y * v.Y + v.Z * v.Z
 }
 
 func (v Vec3) UnitVector() Vec3 {
@@ -111,7 +113,7 @@ func (v Vec3) UnitVector() Vec3 {
 
 func (v Vec3) NearZero() bool {
 	const s = 1e-8
-	return (Abs(v[0]) < s) && (Abs(v[1]) < s) && (Abs(v[2]) < s)
+	return (Abs(v.X) < s) && (Abs(v.Y) < s) && (Abs(v.Z) < s)
 }
 
 func (v Vec3) Reflect(normal Vec3) Vec3 {
@@ -172,9 +174,9 @@ func Clamp(x, min, max Scalar) Scalar {
 }
 
 func (c Color) Write(out io.Writer, samplesPerPixel Scalar) {
-	r := c[0]
-	g := c[1]
-	b := c[2]
+	r := c.X
+	g := c.Y
+	b := c.Z
 
 	scale := 1.0 / samplesPerPixel
 	r = Sqrt(scale * r)
