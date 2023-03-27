@@ -48,7 +48,7 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 		return Color{}
 	}
 
-	if rec, hit := world.Hit(r, 0.001, infinity); hit {
+	if rec := world.Hit(r, 0.001, infinity); rec != nil {
 		m := &world.materials[rec.MaterialIndex]
 		if res, scattered := m.Scatter(r, rec); scattered {
 			return res.Attenuation.HMul(rayColor(res.Scattered, world, depth - 1))

@@ -39,7 +39,7 @@ func Dielectric(indexOfRefraction Scalar) (res Material) {
 	return
 }
 
-func (m *Material) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) Scatter(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
 	switch m.Kind {
 	case MaterialKindLambertian:
 		return m.ScatterLambertian(rIn, rec)
@@ -53,7 +53,7 @@ func (m *Material) Scatter(rIn Ray, rec HitRecord) (res MaterialResult, scattere
 	}
 }
 
-func (m *Material) ScatterLambertian(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterLambertian(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
 	scatterDirection := rec.Normal.Add(RandomUnitVector())
 
 	if scatterDirection.NearZero() {
@@ -69,7 +69,7 @@ func (m *Material) ScatterLambertian(rIn Ray, rec HitRecord) (res MaterialResult
 	return
 }
 
-func (m *Material) ScatterMetal(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterMetal(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
 	reflected := rIn.Dir.UnitVector().Reflect(rec.Normal)
 	res.Scattered = Ray{
 		Orig: rec.P,
@@ -80,7 +80,7 @@ func (m *Material) ScatterMetal(rIn Ray, rec HitRecord) (res MaterialResult, sca
 	return
 }
 
-func (m *Material) ScatterDielectric(rIn Ray, rec HitRecord) (res MaterialResult, scattered bool) {
+func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (res MaterialResult, scattered bool) {
 	res.Attenuation = Color{1, 1, 1}
 	refraction_ratio := m.IndexOfRefraction
 	if rec.FrontFace {
