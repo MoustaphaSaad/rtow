@@ -18,17 +18,15 @@ func (list *HittableList) Clear() {
 	list.spheres = make([]Sphere, 0)
 }
 
-func (list *HittableList) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
-	hit = false
+func (list *HittableList) Hit(r Ray, tMin, tMax Scalar) (rec *HitRecord) {
 	closestSoFar := tMax
 
 	for i := range list.spheres {
-		if v_rec, v_hit := list.spheres[i].Hit(r, tMin, closestSoFar); v_hit {
-			hit = true
+		if v_rec := list.spheres[i].Hit(r, tMin, closestSoFar); v_rec != nil {
 			closestSoFar = v_rec.T
 			rec = v_rec
 		}
 	}
 
-	return
+	return rec
 }

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -48,15 +49,15 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 		return Color{}
 	}
 
-	if rec, hit := world.Hit(r, 0.001, infinity); hit {
+	if rec := world.Hit(r, 0.001, infinity); rec != nil {
 		m := &world.materials[rec.MaterialIndex]
-		if res, scattered := m.Scatter(r, rec); scattered {
-			return res.Attenuation.HMul(rayColor(res.Scattered, world, depth - 1))
+		if attenuation, scattered := m.Scatter(r, rec); scattered != nil {
+			return attenuation.HMul(rayColor(*scattered, world, depth - 1))
 		}
 		return Color{}
 	}
 	unitDirection := r.Dir.UnitVector()
-	t := 0.5 * (unitDirection.Y() + 1)
+	t := 0.5 * (unitDirection.Y + 1)
 	startColor := Color{1, 1, 1}
 	endColor := Color{0.5, 0.7, 1}
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))
@@ -117,6 +118,9 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
+
+	// keep the randomness in control
+	rand.Seed(42)
 
 	start := time.Now()
 

@@ -6,15 +6,14 @@ type Sphere struct {
 	MaterialIndex int
 }
 
-func (s Sphere) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
+func (s *Sphere) Hit(r Ray, tMin, tMax Scalar) *HitRecord {
 	a := r.Dir.LengthSquared()
 	oc := r.Orig.Sub(s.Center)
 	halfB := oc.Dot(r.Dir)
 	c := oc.LengthSquared() - s.Radius*s.Radius
 	discriminant := halfB*halfB - a*c
 	if discriminant < 0 {
-		hit = false
-		return
+		return nil
 	}
 	sqrtd := Sqrt(discriminant)
 
@@ -23,16 +22,16 @@ func (s Sphere) Hit(r Ray, tMin, tMax Scalar) (rec HitRecord, hit bool) {
 	if root < tMin || root > tMax {
 		root = (-halfB + sqrtd) / a
 		if root < tMin || root > tMax {
-			hit = false
-			return
+			return nil
 		}
 	}
 
-	hit = true
-	rec.T = root
-	rec.P = r.At(rec.T)
+	rec := &HitRecord{
+		T:             root,
+		P:             r.At(root),
+		MaterialIndex: s.MaterialIndex,
+	}
 	outwardNormal := rec.P.Sub(s.Center).Div(s.Radius)
 	rec.setFaceNormal(r, outwardNormal)
-	rec.MaterialIndex = s.MaterialIndex
-	return
+	return rec
 }
