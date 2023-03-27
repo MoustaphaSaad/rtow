@@ -6,7 +6,7 @@ type Sphere struct {
 	MaterialIndex int
 }
 
-func (s Sphere) Hit(r Ray, tMin, tMax Scalar) *HitRecord {
+func (s *Sphere) Hit(r Ray, tMin, tMax Scalar) *HitRecord {
 	a := r.Dir.LengthSquared()
 	oc := r.Orig.Sub(s.Center)
 	halfB := oc.Dot(r.Dir)
