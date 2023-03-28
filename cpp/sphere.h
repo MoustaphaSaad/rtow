@@ -3,7 +3,7 @@
 #include "hittable.h"
 #include "vec3.h"
 
-class sphere: public hittable
+class sphere
 {
 public:
 	sphere() {}
@@ -13,7 +13,7 @@ public:
 		  mat_ptr(m)
 	{}
 
-	virtual bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const override
+	bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const
 	{
 		auto a = r.direction().length_squared();
 		auto oc = r.origin() - center;

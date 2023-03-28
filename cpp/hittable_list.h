@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hittable.h"
+#include "sphere.h"
 
 #include <memory>
 #include <vector>
@@ -8,23 +9,24 @@
 using std::shared_ptr;
 using std::make_shared;
 
-class hittable_list: public hittable {
+class hittable_list
+{
 public:
 	hittable_list() {}
-	hittable_list(shared_ptr<hittable> object) { add(object); }
+	hittable_list(const sphere& sphere) { add(sphere); }
 
-	void clear() { objects.clear(); }
-	void add(shared_ptr<hittable> object) { return objects.push_back(object); }
+	void clear() { spheres.clear(); }
+	void add(const sphere& sphere) { return spheres.push_back(sphere); }
 
-	virtual bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const override
+	bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const
 	{
 		hit_record temp_rec;
 		bool hit_anything = false;
 		auto closest_so_far = t_max;
 
-		for (const auto& object: objects)
+		for (const auto& sphere: spheres)
 		{
-			if (object->hit(r, t_min, closest_so_far, temp_rec))
+			if (sphere.hit(r, t_min, closest_so_far, temp_rec))
 			{
 				hit_anything = true;
 				closest_so_far = temp_rec.t;
@@ -35,5 +37,5 @@ public:
 		return hit_anything;
 	}
 
-	std::vector<shared_ptr<hittable>> objects;
+	std::vector<sphere> spheres;
 };
