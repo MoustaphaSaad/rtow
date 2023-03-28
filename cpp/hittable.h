@@ -8,7 +8,7 @@ struct hit_record
 {
 	point3 p;
 	vec3 normal;
-	shared_ptr<material> mat_ptr;
+	int mat_index;
 	real_t t;
 	bool front_face;
 

@@ -16,7 +16,8 @@ public:
 	hittable_list(const sphere& sphere) { add(sphere); }
 
 	void clear() { spheres.clear(); }
-	void add(const sphere& sphere) { return spheres.push_back(sphere); }
+	void add(const sphere& sphere) { spheres.push_back(sphere); }
+	int add(const material& material) { materials.push_back(material); return materials.size() - 1; }
 
 	bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const
 	{
@@ -38,4 +39,5 @@ public:
 	}
 
 	std::vector<sphere> spheres;
+	std::vector<material> materials;
 };

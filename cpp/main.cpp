@@ -52,7 +52,8 @@ color ray_color(const ray& r, const hittable_list& world, int depth)
 	if (world.hit(r, 0.001, infinity, rec)) {
 		ray scattered;
 		color attenuation;
-		if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+		auto& mat = world.materials[rec.mat_index];
+		if (mat.scatter(r, rec, attenuation, scattered))
 			return attenuation * ray_color(scattered, world, depth - 1);
 		return color{};
 	}
@@ -65,7 +66,7 @@ hittable_list random_scene()
 {
 	hittable_list world;
 
-	auto ground_material = std::make_shared<material>(lambertian(color(0.5, 0.5, 0.5)));
+	auto ground_material = world.add(lambertian(color(0.5, 0.5, 0.5)));
 	world.add(sphere{point3(0, -1000, 0), 1000, ground_material});
 
 	for (int a = -11; a < 11; ++a)
@@ -77,37 +78,37 @@ hittable_list random_scene()
 
 			if ((center - point3(4, 0.2, 0)).length() > 0.9)
 			{
-				std::shared_ptr<material> sphere_material;
+				int sphere_material;
 
 				if (choose_mat < 0.8)
 				{
 					auto albedo = color::random() * color::random();
-					sphere_material = std::make_shared<material>(lambertian(albedo));
+					sphere_material = world.add(lambertian(albedo));
 					world.add(sphere{center, 0.2, sphere_material});
 				}
 				else if (choose_mat < 0.95)
 				{
 					auto albedo = color::random(0.5, 1);
 					auto fuzz = random_double(0, 0.5);
-					sphere_material = std::make_shared<material>(metal(albedo, fuzz));
+					sphere_material = world.add(metal(albedo, fuzz));
 					world.add(sphere{center, 0.2, sphere_material});
 				}
 				else
 				{
-					sphere_material = std::make_shared<material>(dielectric(1.5));
+					sphere_material = world.add(dielectric(1.5));
 					world.add(sphere{center, 0.2, sphere_material});
 				}
 			}
 		}
 	}
 
-	auto material1 = std::make_shared<material>(dielectric(1.5));
+	auto material1 = world.add(dielectric(1.5));
 	world.add(sphere{point3(0, 1, 0), 1.0, material1});
 
-	auto material2 = std::make_shared<material>(lambertian(color(0.4, 0.2, 0.1)));
+	auto material2 = world.add(lambertian(color(0.4, 0.2, 0.1)));
 	world.add(sphere{point3(-4, 1, 0), 1.0, material2});
 
-	auto material3 = std::make_shared<material>(metal(color(0.7, 0.6, 0.5), 0.0));
+	auto material3 = world.add(metal(color(0.7, 0.6, 0.5), 0.0));
 	world.add(sphere{point3(4, 1, 0), 1.0, material3});
 
 	return world;

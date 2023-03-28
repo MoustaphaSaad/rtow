@@ -7,10 +7,10 @@ class sphere
 {
 public:
 	sphere() {}
-	sphere(point3 cen, real_t r, shared_ptr<material> m)
+	sphere(point3 cen, real_t r, int m)
 		: center(cen),
 		  radius(r),
-		  mat_ptr(m)
+		  mat_index(m)
 	{}
 
 	bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const
@@ -37,11 +37,11 @@ public:
 		rec.p = r.at(rec.t);
 		auto outward_normal = (rec.p - center) / radius;
 		rec.set_face_normal(r, outward_normal);
-		rec.mat_ptr = mat_ptr;
+		rec.mat_index = mat_index;
 		return true;
 	}
 
 	point3 center;
 	real_t radius;
-	shared_ptr<material> mat_ptr;
+	int mat_index;
 };
