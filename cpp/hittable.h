@@ -8,7 +8,7 @@ struct hit_record
 {
 	point3 p;
 	vec3 normal;
-	shared_ptr<material> mat_ptr;
+	int mat_index;
 	real_t t;
 	bool front_face;
 
@@ -16,10 +16,4 @@ struct hit_record
 		front_face = dot(r.direction(), outward_normal) < 0;
 		normal = front_face ? outward_normal : -outward_normal;
 	}
-};
-
-class hittable
-{
-public:
-	virtual bool hit(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const = 0;
 };
