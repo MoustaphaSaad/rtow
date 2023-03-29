@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
+	"sync"
 	"time"
 )
 
@@ -145,34 +146,38 @@ func main() {
 
 	img := NewImage(imageWidth, imageHeight)
 
-	var pixelOnly time.Duration
+	var wg sync.WaitGroup
 
 	for j := imageHeight - 1; j >= 0; j-- {
 		fmt.Fprintf(os.Stderr, "\rElapsed time: %v, ", time.Since(start))
 		fmt.Fprintf(os.Stderr, "Scanlines remaining: %v ", j)
 		for i := 0; i < imageWidth; i++ {
-			start := time.Now()
-			pixelColor := Color{0, 0, 0}
-			for s := 0; s < samplesPerPixel; s++ {
-				u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
-				v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
-				r := cam.ray(u, v)
-				pixelColor = pixelColor.Add(rayColor(r, &world, maxDepth))
-			}
-			pixelOnly += time.Since(start)
+			wg.Add(1)
+			go func(i, j int) {
+				pixelColor := Color{0, 0, 0}
+				for s := 0; s < samplesPerPixel; s++ {
+					u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
+					v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
+					r := cam.ray(u, v)
+					pixelColor = pixelColor.Add(rayColor(r, &world, maxDepth))
+				}
 
-			scale := 1.0 / Scalar(samplesPerPixel)
-			pixelColor.X = Sqrt(scale * pixelColor.X)
-			pixelColor.Y = Sqrt(scale * pixelColor.Y)
-			pixelColor.Z = Sqrt(scale * pixelColor.Z)
-			img.SetPixel(i, j, pixelColor)
+				scale := 1.0 / Scalar(samplesPerPixel)
+				pixelColor.X = Sqrt(scale * pixelColor.X)
+				pixelColor.Y = Sqrt(scale * pixelColor.Y)
+				pixelColor.Z = Sqrt(scale * pixelColor.Z)
+				img.SetPixel(i, j, pixelColor)
+				wg.Done()
+			}(i, j)
 		}
 	}
+
+	wg.Wait()
+	elapsedTime := time.Since(start)
 
 	img.Write()
 
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
-	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", time.Since(start))
-	fmt.Fprintf(os.Stderr, "Pixel time: %v\n", pixelOnly)
-	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / pixelOnly.Seconds()) / 1000000)
+	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", elapsedTime)
+	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / elapsedTime.Seconds()) / 1000000)
 }
