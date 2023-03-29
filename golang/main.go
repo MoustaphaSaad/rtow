@@ -143,7 +143,7 @@ func main() {
 	aperture := Scalar(0.1)
 	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
-	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
+	img := NewImage(imageWidth, imageHeight)
 
 	var pixelOnly time.Duration
 
@@ -161,9 +161,15 @@ func main() {
 			}
 			pixelOnly += time.Since(start)
 
-			pixelColor.Write(os.Stdout, Scalar(samplesPerPixel))
+			scale := 1.0 / Scalar(samplesPerPixel)
+			pixelColor.X = Sqrt(scale * pixelColor.X)
+			pixelColor.Y = Sqrt(scale * pixelColor.Y)
+			pixelColor.Z = Sqrt(scale * pixelColor.Z)
+			img.SetPixel(i, j, pixelColor)
 		}
 	}
+
+	img.Write()
 
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
 	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", time.Since(start))
