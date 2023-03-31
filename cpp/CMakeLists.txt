@@ -19,6 +19,7 @@ add_executable(rtow
 	rtweekend.h
 	camera.h
 	material.h
+	image.h
 )
 
 target_link_libraries(rtow PRIVATE enkiTS)

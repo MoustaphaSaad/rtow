@@ -5,6 +5,7 @@
 #include "sphere.h"
 #include "camera.h"
 #include "material.h"
+#include "image.h"
 
 #include <iostream>
 #include <chrono>
@@ -137,7 +138,7 @@ int main()
 	auto aperture = 0.1;
 	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
-	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+	image img{image_width, image_height};
 
 	std::chrono::duration<real_t, std::milli> pixel_only{};
 
@@ -159,10 +160,13 @@ int main()
 			}
 			auto end = std::chrono::high_resolution_clock::now();
 			pixel_only += end - start;
-			write_color(std::cout, pixel_color, samples_per_pixel);
+
+			auto scale = 1.0 / samples_per_pixel;
+			img(i, j) = sqrt(pixel_color * scale);
 		}
 	}
 
+	img.write(std::cout);
 	std::cerr << "\nDone.\n";
 
 	auto end = std::chrono::high_resolution_clock::now();
