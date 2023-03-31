@@ -6,7 +6,9 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"runtime"
 	"runtime/pprof"
+	"sync"
 	"time"
 )
 
@@ -106,6 +108,43 @@ func randomScene() HittableList {
 	return world
 }
 
+type ImageTile struct {
+	StartX, StartY int
+	EndX, EndY int
+}
+
+type TileTask struct {
+	img *Image
+	cam *Camera
+	world *HittableList
+	tile ImageTile
+	samplesPerPixel int
+	maxDepth int
+}
+
+func traceTile(c <-chan TileTask, wg *sync.WaitGroup) {
+	for j := range c {
+		for y := j.tile.StartY; y < j.tile.EndY; y++ {
+			for x := j.tile.StartX; x < j.tile.EndX; x++ {
+				pixelColor := Color{0, 0, 0}
+				for s := 0; s < j.samplesPerPixel; s++ {
+					u := (Scalar(x) + Rand()) / Scalar(j.img.width - 1)
+					v := (Scalar(y) + Rand()) / Scalar(j.img.height - 1)
+					r := j.cam.ray(u, v)
+					pixelColor = pixelColor.Add(rayColor(r, j.world, j.maxDepth))
+				}
+
+				scale := 1.0 / Scalar(j.samplesPerPixel)
+				pixelColor.X = Sqrt(scale * pixelColor.X)
+				pixelColor.Y = Sqrt(scale * pixelColor.Y)
+				pixelColor.Z = Sqrt(scale * pixelColor.Z)
+				j.img.SetPixel(x, y, pixelColor)
+			}
+		}
+	}
+	wg.Done()
+}
+
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
@@ -143,30 +182,55 @@ func main() {
 	aperture := Scalar(0.1)
 	cam := NewCamera(lookFrom, lookAt, vUp, 20, aspectRatio, aperture, distToFocus)
 
-	fmt.Printf("P3\n%v %v\n255\n", imageWidth, imageHeight)
+	img := NewImage(imageWidth, imageHeight)
 
-	var pixelOnly time.Duration
+	// launch as many workers as we have cores
+	var wg sync.WaitGroup
+	wg.Add(runtime.NumCPU())
+	workChan := make(chan TileTask, runtime.NumCPU() * 2)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go traceTile(workChan, &wg)
+	}
 
-	for j := imageHeight - 1; j >= 0; j-- {
-		fmt.Fprintf(os.Stderr, "\rElapsed time: %v, ", time.Since(start))
-		fmt.Fprintf(os.Stderr, "Scanlines remaining: %v ", j)
-		for i := 0; i < imageWidth; i++ {
-			start := time.Now()
-			pixelColor := Color{0, 0, 0}
-			for s := 0; s < samplesPerPixel; s++ {
-				u := (Scalar(i) + Rand()) / Scalar(imageWidth - 1)
-				v := (Scalar(j) + Rand()) / Scalar(imageHeight - 1)
-				r := cam.ray(u, v)
-				pixelColor = pixelColor.Add(rayColor(r, &world, maxDepth))
-			}
-			pixelOnly += time.Since(start)
+	tileSizeX := 16
+	tileCountX := 1 + ((img.width - 1) / tileSizeX)
+	tileSizeY := 16
+	tileCountY := 1 + ((img.height - 1) / tileSizeY)
 
-			pixelColor.Write(os.Stdout, Scalar(samplesPerPixel))
+	tileTotalCount := tileCountX * tileCountY
+
+	t := TileTask {
+		img: img,
+		cam: &cam,
+		world: &world,
+		samplesPerPixel: samplesPerPixel,
+		maxDepth: maxDepth,
+	}
+
+	for x := 0; x < tileCountX; x++ {
+		t.tile.StartX = x * tileSizeX
+		t.tile.EndX = t.tile.StartX + tileSizeX
+		if t.tile.EndX > img.width { t.tile.EndX = img.width }
+
+		for y := 0; y < tileCountY; y++ {
+			t.tile.StartY = y * tileSizeY
+			t.tile.EndY = t.tile.StartY + tileSizeY
+			if t.tile.EndY > img.height { t.tile.EndY = img.height }
+			fmt.Fprintf(os.Stderr, "\rTile remaining: %v       ", tileTotalCount)
+			workChan <- t
+			tileTotalCount--
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "\rTile remaining: %v       ", tileTotalCount)
+
+	close(workChan)
+	wg.Wait()
+	elapsedTime := time.Since(start)
+
+	img.Write()
+
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
-	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", time.Since(start))
-	fmt.Fprintf(os.Stderr, "Pixel time: %v\n", pixelOnly)
-	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / pixelOnly.Seconds()) / 1000000)
+	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", elapsedTime)
+	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / elapsedTime.Seconds()) / 1000000)
 }
