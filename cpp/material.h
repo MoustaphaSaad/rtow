@@ -3,6 +3,8 @@
 #include "rtweekend.h"
 #include "hittable.h"
 
+#include <assert.h>
+
 struct material
 {
 	enum KIND
@@ -59,6 +61,9 @@ struct material
 			scattered = ray(rec.p, direction);
 			return true;
 		}
+		default:
+			assert(false && "unreachable");
+			return false;
 		}
 	}
 

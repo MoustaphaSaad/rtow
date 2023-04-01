@@ -5,6 +5,9 @@
 #include "sphere.h"
 #include "camera.h"
 #include "material.h"
+#include "image.h"
+
+#include <TaskScheduler.h>
 
 #include <iostream>
 #include <chrono>
@@ -114,8 +117,52 @@ hittable_list random_scene()
 	return world;
 }
 
+struct ImageTile
+{
+	int startX, startY;
+	int endX, endY;
+};
+
+struct RaytraceTask: public enki::ITaskSet
+{
+	image* img;
+	camera* cam;
+	hittable_list* world;
+	int samples_per_pixel;
+	int max_depth;
+	std::vector<ImageTile> tasks;
+
+	void ExecuteRange(enki::TaskSetPartition range, uint32_t) override
+	{
+		for (uint32_t r = range.start; r < range.end; ++r)
+		{
+			auto& tile = tasks[r];
+			for (int j = tile.startY; j < tile.endY; ++j)
+			{
+				for (int i = tile.startX; i < tile.endX; ++i)
+				{
+					color pixel_color{0, 0, 0};
+					for (int s = 0; s < samples_per_pixel; ++s)
+					{
+						auto u = (i + random_double()) / (img->width - 1);
+						auto v = (j + random_double()) / (img->height - 1);
+						auto r = cam->get_ray(u, v);
+						pixel_color += ray_color(r, *world, max_depth);
+					}
+
+					auto scale = 1.0 / samples_per_pixel;
+					(*img)(i, j) = sqrt(pixel_color * scale);
+				}
+			}
+		}
+	}
+};
+
 int main()
 {
+	enki::TaskScheduler ts;
+	ts.Initialize();
+
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// Image
@@ -137,37 +184,54 @@ int main()
 	auto aperture = 0.1;
 	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
-	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+	image img{image_width, image_height};
 
-	std::chrono::duration<real_t, std::milli> pixel_only{};
+	int tileSizeX = 16;
+	int tileSizeY = 16;
+	int tileCountX = 1 + ((img.width - 1) / tileSizeX);
+	int tileCountY = 1 + ((img.height - 1) / tileSizeY);
 
-	for (int j = image_height - 1; j >= 0; --j)
+	int tileTotalCount = tileCountX * tileCountY;
+
+	RaytraceTask job{};
+	job.img = &img;
+	job.cam = &cam;
+	job.world = &world;
+	job.samples_per_pixel = samples_per_pixel;
+	job.max_depth = max_depth;
+
+	for (int x = 0; x < tileCountX; ++x)
 	{
-		auto end = std::chrono::high_resolution_clock::now();
-		std::cerr << "\rElapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms, ";
-		std::cerr << "Scan lines remaining: " << j << ' ' << std::flush;
-		for (int i = 0; i < image_width; ++i)
+		int startX = x * tileSizeX;
+		int endX = startX + tileSizeX;
+		if (endX > img.width) { endX = img.width; }
+
+		for (int y = 0; y < tileCountY; ++y)
 		{
-			auto start = std::chrono::high_resolution_clock::now();
-			color pixel_color{0, 0, 0};
-			for (int s = 0; s < samples_per_pixel; ++s)
-			{
-				auto u = (i + random_double()) / (image_width - 1);
-				auto v = (j + random_double()) / (image_height - 1);
-				auto r = cam.get_ray(u, v);
-				pixel_color += ray_color(r, world, max_depth);
-			}
-			auto end = std::chrono::high_resolution_clock::now();
-			pixel_only += end - start;
-			write_color(std::cout, pixel_color, samples_per_pixel);
+			int startY = y * tileSizeY;
+			int endY = startY + tileSizeY;
+			if (endY > img.height) { endY = img.height; }
+
+			ImageTile tile{};
+			tile.startX = startX;
+			tile.endX = endX;
+			tile.startY = startY;
+			tile.endY = endY;
+			job.tasks.push_back(tile);
 		}
 	}
 
-	std::cerr << "\nDone.\n";
+	job.m_SetSize = job.tasks.size();
+	ts.AddTaskSetToPipe(&job);
+	ts.WaitforTask(&job);
 
 	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<real_t, std::milli> pixel_only = end - start;
+
+	img.write(std::cout);
+	std::cerr << "\nDone.\n";
+
 	std::cerr << "Elapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms\n";
-	std::cerr << "Pixel time: " << pixel_only.count() << "ms\n";
 	std::cerr << "Ray Per Sec: " << (real_t(rays_count) / (real_t(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
 
 	return 0;

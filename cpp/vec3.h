@@ -172,6 +172,11 @@ inline vec3 unit_vector(vec3 v)
 	return v / v.length();
 }
 
+inline vec3 sqrt(vec3 v)
+{
+	return vec3{_mm_sqrt_ps(v.m)};
+}
+
 #else
 class vec3
 {
@@ -302,6 +307,11 @@ inline vec3 cross(const vec3& u, const vec3& v)
 inline vec3 unit_vector(vec3 v)
 {
 	return v / v.length();
+}
+
+inline vec3 sqrt(vec3 v)
+{
+	return vec3{sqrt(v.e[0]), sqrt(v.e[1]), sqrt(v.e[2])};
 }
 
 #endif
