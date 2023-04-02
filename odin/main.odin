@@ -8,6 +8,7 @@ import "core:io"
 import "core:math/linalg"
 import "core:math"
 import "core:math/rand"
+import "core:thread"
 
 hit_sphere :: proc(center: Point3, radius: f32, r: Ray) -> f32 {
 	// sphere around arbitrary center equation is
@@ -133,7 +134,45 @@ random_scene :: proc() -> (res: ^HittableList) {
 	return
 }
 
+ImageTile :: struct {
+	StartX, StartY: int,
+	EndX, EndY: int,
+}
+
+TileTask :: struct {
+	img: ^Image,
+	cam: ^Camera,
+	world: ^HittableList,
+	tile: ImageTile,
+	samples_per_pixel: int,
+	max_depth: int,
+}
+
+raytrace_tile :: proc(task_ptr: thread.Task) {
+	task := (^TileTask)(task_ptr.data)
+	for y in task.tile.StartY..<task.tile.EndY {
+		for x in task.tile.StartX..<task.tile.EndX {
+			pixel_color := Color{0, 0, 0}
+			for s in 0 ..< task.samples_per_pixel {
+				u := (f32(x) + rand.float32()) / f32(task.img.width - 1)
+				v := (f32(y) + rand.float32()) / f32(task.img.height - 1)
+				r := camera_ray(task.cam^, u, v)
+				pixel_color += ray_color(r, task.world, task.max_depth)
+			}
+			avg_c := v3_sqrt(v3_splat(1.0 / f32(task.samples_per_pixel)) * pixel_color)
+			ix := image_index(task.img^, x, y)
+			task.img.pixels[ix] = avg_c
+		}
+	}
+}
+
 main :: proc() {
+	pool: thread.Pool
+	thread.pool_init(&pool, context.allocator, 8)
+	defer thread.pool_destroy(&pool)
+
+	thread.pool_start(&pool)
+
 	start := time.now()
 
 	buffered_stdout: bufio.Writer
@@ -177,21 +216,43 @@ main :: proc() {
 	img := image_new(image_width, image_height)
 	defer image_free(img)
 
-	for j := image_height - 1; j >= 0; j -= 1 {
-		for i in 0 ..< image_width {
-			pixel_color := Color{0, 0, 0}
-			for s in 0 ..< samples_per_pixel {
-				u := (f32(i) + rand.float32()) / f32(image_width - 1)
-				v := (f32(j) + rand.float32()) / f32(image_height - 1)
-				r := camera_ray(cam, u, v)
-				pixel_color += ray_color(r, world, max_depth)
+	tileSizeX := 16
+	tileSizeY := 16
+	tileCountX := 1 + ((img.width - 1) / tileSizeX)
+	tileCountY := 1 + ((img.height - 1) / tileSizeY)
+
+	tileTotalCount := tileCountX * tileCountY
+
+	tiles := make([dynamic]TileTask, tileTotalCount)
+	defer delete(tiles)
+
+	tileIndex := 0
+
+	for y in 0..<tileCountY {
+		startY := y * tileSizeY
+		endY := startY + tileSizeY
+		if endY > img.height { endY = img.height }
+
+		for x in 0..<tileCountX {
+			startX := x * tileSizeX
+			endX := startX + tileSizeX
+			if endX > img.width { endX = img.width }
+
+			tile := TileTask {
+				img = &img,
+				cam = &cam,
+				world = world,
+				tile = ImageTile{ StartX = startX, StartY = startY, EndX = endX, EndY = endY },
+				samples_per_pixel = samples_per_pixel,
+				max_depth = max_depth,
 			}
-			avg_c := v3_sqrt(v3_splat(1.0 / f32(samples_per_pixel)) * pixel_color)
-			ix := image_index(img, i, j)
-			img.pixels[ix] = avg_c
+			tiles[tileIndex] = tile
+			thread.pool_add_task(&pool, context.allocator, raytrace_tile, &tiles[tileIndex])
+			tileIndex += 1
 		}
 	}
 
+	thread.pool_finish(&pool)
 	pixel_only := time.since(start)
 
 	image_write(img, stdout)
