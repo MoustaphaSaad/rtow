@@ -174,19 +174,11 @@ main :: proc() {
 	aperture : f32 = 0.1
 	cam := new_camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus)
 
-	fmt.wprintf(stdout, "P3\n%v %v\n255\n", image_width, image_height)
-
-	pixel_only: time.Duration
+	img := image_new(image_width, image_height)
+	defer image_free(img)
 
 	for j := image_height - 1; j >= 0; j -= 1 {
-		fmt.wprintf(
-			stderr,
-			"\rElapsed time: %v ms, ",
-			time.duration_milliseconds(time.since(start)),
-		)
-		fmt.wprintf(stderr, "Scanlines remaining: %v", j)
 		for i in 0 ..< image_width {
-			start := time.now()
 			pixel_color := Color{0, 0, 0}
 			for s in 0 ..< samples_per_pixel {
 				u := (f32(i) + rand.float32()) / f32(image_width - 1)
@@ -194,13 +186,17 @@ main :: proc() {
 				r := camera_ray(cam, u, v)
 				pixel_color += ray_color(r, world, max_depth)
 			}
-			pixel_only += time.since(start)
-			write_color(stdout, pixel_color, f32(samples_per_pixel))
+			avg_c := v3_sqrt(v3_splat(1.0 / f32(samples_per_pixel)) * pixel_color)
+			ix := image_index(img, i, j)
+			img.pixels[ix] = avg_c
 		}
 	}
 
+	pixel_only := time.since(start)
+
+	image_write(img, stdout)
+
 	fmt.wprintf(stderr, "\nDone.\n")
-	fmt.wprintf(stderr, "Elapsed time: %v ms\n", time.duration_milliseconds(time.since(start)))
-	fmt.wprintf(stderr, "Pixel time: %v ms\n", time.duration_milliseconds(pixel_only))
+	fmt.wprintf(stderr, "Elapsed time: %v ms\n", time.duration_milliseconds(pixel_only))
 	fmt.wprintf(stderr, "Ray Per Sec: %.2f MRays/Second\n", f64(rays_count) / time.duration_seconds(pixel_only) / 1000000)
 }
