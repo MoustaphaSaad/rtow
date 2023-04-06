@@ -328,7 +328,12 @@ vec3 random_in_unit_sphere(random_series* series)
 
 vec3 random_unit_vector(random_series* series)
 {
-	return unit_vector(random_in_unit_sphere(series));
+	auto z = random_double(series, -1, 1);
+	auto a = random_double(series, 0, 2 * pi);
+	auto r = sqrt(real_t(1.0) - z * z);
+	auto x = r * cos(a);
+	auto y = r * sin(a);
+	return vec3{ x, y, z };
 }
 
 // old ray tracing book
