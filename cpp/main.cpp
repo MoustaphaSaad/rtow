@@ -58,7 +58,7 @@ color ray_color(random_series* series, const ray& r, const hittable_list& world,
 	if (depth <= 0)
 		return color{};
 
-	if (world.hit(r, 0.001, infinity, rec)) {
+	if (world.hit_soa(r, 0.001, infinity, rec)) {
 		ray scattered;
 		color attenuation;
 		auto& mat = world.materials[rec.mat_index];

@@ -60,3 +60,4 @@ add_executable(rtow
 
 target_link_libraries(rtow PRIVATE enkiTS)
 target_compile_features(rtow PUBLIC cxx_std_17)
+target_include_directories(rtow PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

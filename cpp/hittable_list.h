@@ -2,6 +2,7 @@
 
 #include "hittable.h"
 #include "sphere.h"
+#include "spheres_hit.h"
 
 #include <memory>
 #include <vector>
@@ -71,6 +72,45 @@ public:
 		}
 
 		return hit_anything;
+	}
+
+	bool hit_soa(const ray& r, real_t t_min, real_t t_max, hit_record& rec) const
+	{
+		ispc::Ray ispc_ray{};
+		ispc_ray.origin.v[0] = r.origin().x();
+		ispc_ray.origin.v[1] = r.origin().y();
+		ispc_ray.origin.v[2] = r.origin().z();
+		ispc_ray.dir.v[0] = r.direction().x();
+		ispc_ray.dir.v[1] = r.direction().y();
+		ispc_ray.dir.v[2] = r.direction().z();
+
+		float out_t{};
+		int32_t out_hit_index{};
+
+		auto res = spheres_hit(
+			soa.center_x.data(),
+			soa.center_y.data(),
+			soa.center_z.data(),
+			soa.squared_radius.data(),
+			soa.inv_radius.data(),
+			spheres.size(),
+			ispc_ray,
+			t_min,
+			t_max,
+			&out_t,
+			&out_hit_index
+		);
+
+		if (res == false)
+			return false;
+
+		rec.t = out_t;
+		rec.p = r.at(rec.t);
+		vec3 center {soa.center_x[out_hit_index], soa.center_y[out_hit_index], soa.center_z[out_hit_index]};
+		auto outward_normal = (rec.p - center) * soa.inv_radius[out_hit_index];
+		rec.set_face_normal(r, outward_normal);
+		rec.mat_index = spheres[out_hit_index].mat_index;
+		return res;
 	}
 
 	std::vector<sphere> spheres;
