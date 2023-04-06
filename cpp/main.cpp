@@ -123,6 +123,8 @@ hittable_list random_scene(random_series* series)
 	auto material3 = world.add(metal(color(0.7, 0.6, 0.5), 0.0));
 	world.add(sphere{point3(4, 1, 0), 1.0, material3});
 
+	world.prepare_soa();
+
 	return world;
 }
 
