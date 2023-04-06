@@ -45,7 +45,13 @@ real_t hit_sphere(const point3& center, real_t radius, const ray& r)
 	}
 }
 
-color ray_color(random_series* series, const ray& r, const hittable_list& world, int depth)
+struct raytrace_stat
+{
+	size_t ray_count;
+	size_t bounces;
+};
+
+color ray_color(random_series* series, const ray& r, const hittable_list& world, int depth, raytrace_stat& stat)
 {
 	hit_record rec;
 
@@ -57,7 +63,10 @@ color ray_color(random_series* series, const ray& r, const hittable_list& world,
 		color attenuation;
 		auto& mat = world.materials[rec.mat_index];
 		if (mat.scatter(series, r, rec, attenuation, scattered))
-			return attenuation * ray_color(series, scattered, world, depth - 1);
+		{
+			++stat.bounces;
+			return attenuation * ray_color(series, scattered, world, depth - 1, stat);
+		}
 		return color{};
 	}
 	auto unit_direction = unit_vector(r.direction());
@@ -132,10 +141,12 @@ struct RaytraceTask: public enki::ITaskSet
 	int max_depth;
 	std::vector<ImageTile> tasks;
 	std::vector<random_series> random_series;
+	std::vector<raytrace_stat> stats;
 
 	void ExecuteRange(enki::TaskSetPartition range, uint32_t thread_ix) override
 	{
 		auto series = &random_series[thread_ix];
+		auto& stat = stats[thread_ix];
 		for (uint32_t r = range.start; r < range.end; ++r)
 		{
 			auto& tile = tasks[r];
@@ -149,7 +160,8 @@ struct RaytraceTask: public enki::ITaskSet
 						auto u = (i + random_double(series)) / (img->width - 1);
 						auto v = (j + random_double(series)) / (img->height - 1);
 						auto r = cam->get_ray(series, u, v);
-						pixel_color += ray_color(series, r, *world, max_depth);
+						pixel_color += ray_color(series, r, *world, max_depth, stat);
+						++stat.ray_count;
 					}
 
 					auto scale = 1.0 / samples_per_pixel;
@@ -172,7 +184,6 @@ int main()
 	const int image_width = 640;
 	const int image_height = static_cast<int>(image_width / aspect_ratio);
 	const int samples_per_pixel = 10;
-	const size_t rays_count = image_width * image_height * samples_per_pixel;
 	const int max_depth = 50;
 
 	// World
@@ -222,6 +233,7 @@ int main()
 			tile.endY = endY;
 			job.tasks.push_back(tile);
 			job.random_series.push_back(random_series{xor_shift_32_rand(&global_random_series)});
+			job.stats.push_back(raytrace_stat{});
 		}
 	}
 
@@ -232,10 +244,19 @@ int main()
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<real_t, std::milli> pixel_only = end - start;
 
+	raytrace_stat global_stat{};
+	for (auto& s: job.stats)
+	{
+		global_stat.ray_count += s.ray_count;
+		global_stat.bounces += s.bounces;
+	}
+
 	img.write(std::cout);
 	std::cerr << "\nDone.\n";
 
 	std::cerr << "Elapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms\n";
+	std::cerr << "Total Rays: " << real_t(global_stat.ray_count) / real_t(1000'000.0) << " MRays, Bounces: " << real_t(global_stat.bounces) / real_t(1000'000.0) << " MRays\n";
+	auto rays_count = global_stat.ray_count + global_stat.bounces;
 	std::cerr << "Ray Per Sec: " << (real_t(rays_count) / (real_t(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
 
 	return 0;
