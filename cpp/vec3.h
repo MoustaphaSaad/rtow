@@ -102,14 +102,14 @@ public:
 		return _mm_movemask_ps(_mm_cmplt_ps(r.m, s.m)) == 15;
 	}
 
-	inline static vec3 random()
+	inline static vec3 random(random_series* series)
 	{
-		return vec3{random_double(), random_double(), random_double()};
+		return vec3{random_double(series), random_double(series), random_double(series)};
 	}
 
-	inline static vec3 random(real_t min, real_t max)
+	inline static vec3 random(random_series* series, real_t min, real_t max)
 	{
-		return vec3{random_double(min, max), random_double(min, max), random_double(min, max)};
+		return vec3{random_double(series, min, max), random_double(series, min, max), random_double(series, min, max)};
 	}
 
 public:
@@ -316,25 +316,25 @@ inline vec3 sqrt(vec3 v)
 
 #endif
 
-vec3 random_in_unit_sphere()
+vec3 random_in_unit_sphere(random_series* series)
 {
 	while (true)
 	{
-		auto p = vec3::random(-1, 1);
+		auto p = vec3::random(series, -1, 1);
 		if (p.length_squared() >= 1) continue;
 		return p;
 	}
 }
 
-vec3 random_unit_vector()
+vec3 random_unit_vector(random_series* series)
 {
-	return unit_vector(random_in_unit_sphere());
+	return unit_vector(random_in_unit_sphere(series));
 }
 
 // old ray tracing book
-vec3 random_in_hemisphere(const vec3& normal)
+vec3 random_in_hemisphere(random_series* series, const vec3& normal)
 {
-	auto in_unit_sphere = random_in_unit_sphere();
+	auto in_unit_sphere = random_in_unit_sphere(series);
 	if (dot(in_unit_sphere, normal) > 0.0)
 		return in_unit_sphere;
 	else
@@ -354,11 +354,11 @@ vec3 refract(const vec3& uv, const vec3& n, real_t etai_over_etat)
 	return r_out_perp + r_out_parallel;
 }
 
-vec3 random_in_unit_disk()
+vec3 random_in_unit_disk(random_series* series)
 {
 	while (true)
 	{
-		auto p = vec3(random_double(-1, 1), random_double(-1, 1), 0);
+		auto p = vec3(random_double(series, -1, 1), random_double(series, -1, 1), 0);
 		if (p.length_squared() >= 1) continue;
 		return p;
 	}

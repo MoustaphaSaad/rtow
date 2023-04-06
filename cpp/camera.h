@@ -24,9 +24,9 @@ public:
 		lens_radius = aperture / 2;
 	}
 
-	ray get_ray(real_t s, real_t t) const
+	ray get_ray(random_series* series, real_t s, real_t t) const
 	{
-		auto rd = lens_radius * random_in_unit_disk();
+		auto rd = lens_radius * random_in_unit_disk(series);
 		auto offset = u * rd.x() + v * rd.y();
 
 		return ray{origin + offset, lower_left_corner + s * horizontal + t * vertical - origin - offset};

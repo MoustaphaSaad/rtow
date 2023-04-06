@@ -17,25 +17,29 @@ inline real_t degrees_to_radians(real_t degrees) {
 	return degrees * pi / 180.0;
 }
 
-thread_local uint32_t s_RndState = 1;
-inline uint32_t xor_shift_32_rand()
+struct random_series
 {
-	uint32_t x = s_RndState;
+	uint32_t state;
+};
+
+inline uint32_t xor_shift_32_rand(random_series* series)
+{
+	uint32_t x = series->state;
 	x ^= x << 13;
 	x ^= x >> 17;
 	x ^= x << 15;
-	s_RndState = x;
+	series->state = x;
 	return x;
 }
 
-inline real_t random_double()
+inline real_t random_double(random_series* series)
 {
-	return xor_shift_32_rand() / real_t(UINT32_MAX);
+	return xor_shift_32_rand(series) / real_t(UINT32_MAX);
 }
 
-inline real_t random_double(real_t min, real_t max)
+inline real_t random_double(random_series* series, real_t min, real_t max)
 {
-	return min + (max - min) * random_double();
+	return min + (max - min) * random_double(series);
 }
 
 inline real_t clamp(real_t x, real_t min, real_t max)
