@@ -316,14 +316,23 @@ inline vec3 sqrt(vec3 v)
 
 #endif
 
+real_t max(real_t a, real_t b)
+{
+	if (a > b)
+		return a;
+	return b;
+}
+
 vec3 random_in_unit_sphere(random_series* series)
 {
-	while (true)
-	{
-		auto p = vec3::random(series, -1, 1);
-		if (p.length_squared() >= 1) continue;
-		return p;
-	}
+	auto z = random_double(series, -1, 1);
+	auto t = random_double(series, 0, 2 * pi);
+	auto r = sqrt(max(real_t(0.0), real_t(1.0) - z * z));
+	auto x = r * cos(t);
+	auto y = r * sin(t);
+	vec3 res {x, y, z};
+	res *= pow(random_double(series), real_t(1.0 / 3.0));
+	return res;
 }
 
 vec3 random_unit_vector(random_series* series)
