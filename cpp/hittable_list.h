@@ -15,8 +15,8 @@ struct spheres_soa
 	std::vector<real_t> center_x;
 	std::vector<real_t> center_y;
 	std::vector<real_t> center_z;
-	std::vector<real_t> squared_radius;
-	std::vector<real_t> inv_radius;
+	std::vector<real_t> radius;
+	std::vector<int> mat_index;
 };
 
 inline static size_t
@@ -43,15 +43,15 @@ public:
 		soa.center_x.resize(simd_count, real_t(10000));
 		soa.center_y.resize(simd_count, real_t(10000));
 		soa.center_z.resize(simd_count, real_t(10000));
-		soa.squared_radius.resize(simd_count, real_t(0));
-		soa.inv_radius.resize(simd_count, real_t(0));
+		soa.radius.resize(simd_count, real_t(0));
+		soa.mat_index.resize(simd_count, INT_MAX);
 		for (size_t i = 0; i < spheres.size(); ++i)
 		{
 			soa.center_x[i] = spheres[i].center.x();
 			soa.center_y[i] = spheres[i].center.y();
 			soa.center_z[i] = spheres[i].center.z();
-			soa.squared_radius[i] = spheres[i].radius * spheres[i].radius;
-			soa.inv_radius[i] = real_t(1.0) / spheres[i].radius;
+			soa.radius[i] = spheres[i].radius;
+			soa.mat_index[i] = spheres[i].mat_index;
 		}
 	}
 
@@ -91,8 +91,7 @@ public:
 			soa.center_x.data(),
 			soa.center_y.data(),
 			soa.center_z.data(),
-			soa.squared_radius.data(),
-			soa.inv_radius.data(),
+			soa.radius.data(),
 			spheres.size(),
 			ispc_ray,
 			t_min,
@@ -107,9 +106,9 @@ public:
 		rec.t = out_t;
 		rec.p = r.at(rec.t);
 		vec3 center {soa.center_x[out_hit_index], soa.center_y[out_hit_index], soa.center_z[out_hit_index]};
-		auto outward_normal = (rec.p - center) * soa.inv_radius[out_hit_index];
+		auto outward_normal = (rec.p - center) / soa.radius[out_hit_index];
 		rec.set_face_normal(r, outward_normal);
-		rec.mat_index = spheres[out_hit_index].mat_index;
+		rec.mat_index = soa.mat_index[out_hit_index];
 		return res;
 	}
 

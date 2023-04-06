@@ -31,8 +31,7 @@ export uniform bool spheres_hit(
 	uniform const float center_x[],
 	uniform const float center_y[],
 	uniform const float center_z[],
-	uniform const float squared_radius[],
-	uniform const float inv_radius[],
+	uniform const float radius[],
 	uniform int spheres_count,
 	uniform const Ray& ray,
 	uniform float t_min,
@@ -49,7 +48,7 @@ export uniform bool spheres_hit(
 		float3 center = {center_x[i], center_y[i], center_z[i]};
 		float3 oc = ray.origin - center;
 		float half_b = dot(ray.dir, oc);
-		float c = length_squared(oc) - squared_radius[i];
+		float c = length_squared(oc) - radius[i] * radius[i];
 
 		float discriminant = half_b * half_b - a * c;
 		if (discriminant < 0) continue;
