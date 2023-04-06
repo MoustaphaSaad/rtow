@@ -17,9 +17,20 @@ inline real_t degrees_to_radians(real_t degrees) {
 	return degrees * pi / 180.0;
 }
 
+thread_local uint32_t s_RndState = 1;
+inline uint32_t xor_shift_32_rand()
+{
+	uint32_t x = s_RndState;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 15;
+	s_RndState = x;
+	return x;
+}
+
 inline real_t random_double()
 {
-	return rand() / (RAND_MAX + 1.0);
+	return xor_shift_32_rand() / real_t(UINT32_MAX);
 }
 
 inline real_t random_double(real_t min, real_t max)
