@@ -8,7 +8,7 @@ using std::shared_ptr;
 using std::make_shared;
 using std::sqrt;
 
-using real_t = double;
+using real_t = float;
 
 const real_t infinity = std::numeric_limits<real_t>::infinity();
 const real_t pi = 3.1415926535897932385;
