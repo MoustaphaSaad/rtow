@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 )
 
 type Scalar = float32
@@ -39,8 +38,22 @@ func Pow(b, e Scalar) Scalar {
 	return Scalar(math.Pow(float64(b), float64(e)))
 }
 
-func Rand() Scalar {
-	return rand.Float32()
+
+type RandomSeries struct {
+	state uint32
+}
+
+func (series *RandomSeries) Rand() uint32 {
+	x := series.state
+	x ^= x << 13
+	x ^= x >> 17
+	x ^= x << 15
+	series.state = x
+	return x
+}
+
+func Rand(series *RandomSeries) Scalar {
+	return Scalar(series.Rand()) / Scalar(^uint32(0))
 }
 
 
@@ -127,36 +140,37 @@ func (uv Vec3) Refract(normal Vec3, etai_over_etat Scalar) Vec3 {
 	return r_out_perp.Add(r_out_parallel)
 }
 
-func RandomDouble() Scalar {
-	return Rand()
+
+func RandomDouble(series *RandomSeries) Scalar {
+	return Rand(series)
 }
 
-func RandomDoubleInRange(min, max Scalar) Scalar {
-	return min + RandomDouble() * (max - min)
+func RandomDoubleInRange(series *RandomSeries, min, max Scalar) Scalar {
+	return min + RandomDouble(series) * (max - min)
 }
 
-func RandomVec3() Vec3 {
-	return Vec3{Rand(), Rand(), Rand()}
+func RandomVec3(series *RandomSeries) Vec3 {
+	return Vec3{Rand(series), Rand(series), Rand(series)}
 }
 
-func RandomVec3InRange(min, max Scalar) Vec3 {
-	return Vec3{RandomDoubleInRange(min, max), RandomDoubleInRange(min, max), RandomDoubleInRange(min, max)}
+func RandomVec3InRange(series *RandomSeries, min, max Scalar) Vec3 {
+	return Vec3{RandomDoubleInRange(series, min, max), RandomDoubleInRange(series, min, max), RandomDoubleInRange(series, min, max)}
 }
 
-func RandomInUnitSphere() Vec3 {
+func RandomInUnitSphere(series *RandomSeries) Vec3 {
 	for {
-		p := RandomVec3InRange(-1, 1)
+		p := RandomVec3InRange(series, -1, 1)
 		if p.LengthSquared() >= 1 { continue }
 		return p
 	}
 }
 
-func RandomUnitVector() Vec3 {
-	return RandomInUnitSphere().UnitVector()
+func RandomUnitVector(series *RandomSeries) Vec3 {
+	return RandomInUnitSphere(series).UnitVector()
 }
 
-func RandomInHemisphere(normal Vec3) Vec3 {
-	inUnitSphere := RandomInUnitSphere()
+func RandomInHemisphere(series *RandomSeries, normal Vec3) Vec3 {
+	inUnitSphere := RandomInUnitSphere(series)
 	if inUnitSphere.Dot(normal) > 0.0 {
 		return inUnitSphere
 	} else {
@@ -191,9 +205,9 @@ func (c Color) Write(out io.Writer, samplesPerPixel Scalar) {
 	)
 }
 
-func RandomInUnitDisk() Vec3 {
+func RandomInUnitDisk(series *RandomSeries) Vec3 {
 	for {
-		p := Vec3{RandomDoubleInRange(-1, 1), RandomDoubleInRange(-1, 1), 0}
+		p := Vec3{RandomDoubleInRange(series, -1, 1), RandomDoubleInRange(series, -1, 1), 0}
 		if p.LengthSquared() >= 1 { continue }
 		return p
 	}
