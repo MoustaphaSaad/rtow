@@ -6,6 +6,7 @@ package main
 // #cgo LDFLAGS: ./build/spheres_hit.a
 // #include "spheres_hit.h"
 import "C"
+import "unsafe"
 
 type SpheresSOA struct {
 	centerX, centerY, centerZ, radius []Scalar
@@ -51,6 +52,45 @@ func (list *HittableList) PrepareSOA() {
 		list.soa.radius[i] = list.spheres[i].Radius
 		list.soa.matIndex[i] = list.spheres[i].MaterialIndex
 	}
+}
+
+func (list *HittableList) HitSOA(r Ray, tMin, tMax Scalar) (rec *HitRecord) {
+	ispcRay := C.Ray{}
+	ispcRay.origin.v[0] = C.float(r.Orig.X)
+	ispcRay.origin.v[1] = C.float(r.Orig.Y)
+	ispcRay.origin.v[2] = C.float(r.Orig.Z)
+	ispcRay.dir.v[0] = C.float(r.Dir.X)
+	ispcRay.dir.v[1] = C.float(r.Dir.Y)
+	ispcRay.dir.v[2] = C.float(r.Dir.Z)
+
+	var outT C.float
+	var outHitIndex C.int
+
+	res := C.spheres_hit(
+		(*C.float)(unsafe.Pointer(&list.soa.centerX[0])),
+		(*C.float)(unsafe.Pointer(&list.soa.centerY[0])),
+		(*C.float)(unsafe.Pointer(&list.soa.centerZ[0])),
+		(*C.float)(unsafe.Pointer(&list.soa.radius[0])),
+		C.int(len(list.spheres)),
+		(*C.Ray)(unsafe.Pointer(&ispcRay)),
+		C.float(tMin),
+		C.float(tMax),
+		(*C.float)(unsafe.Pointer(&outT)),
+		(*C.int)(unsafe.Pointer(&outHitIndex)),
+	)
+
+	if res == false {
+		return
+	}
+
+	rec = &HitRecord{}
+	rec.T = float32(outT)
+	rec.P = r.At(rec.T)
+	center := Vec3{list.soa.centerX[outHitIndex], list.soa.centerY[outHitIndex], list.soa.centerZ[outHitIndex]}
+	outwardNormal := rec.P.Sub(center).Div(list.soa.radius[outHitIndex])
+	rec.setFaceNormal(r, outwardNormal)
+	rec.MaterialIndex = list.soa.matIndex[outHitIndex]
+	return rec
 }
 
 func (list *HittableList) Hit(r Ray, tMin, tMax Scalar) (rec *HitRecord) {

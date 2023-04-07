@@ -51,7 +51,7 @@ func rayColor(r Ray, world *HittableList, depth int, stat *RaytraceStat) Color {
 		return Color{}
 	}
 
-	if rec := world.Hit(r, 0.001, infinity); rec != nil {
+	if rec := world.HitSOA(r, 0.001, infinity); rec != nil {
 		m := &world.materials[rec.MaterialIndex]
 		if attenuation, scattered := m.Scatter(r, rec); scattered != nil {
 			stat.bounces++
