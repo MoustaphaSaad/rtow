@@ -45,19 +45,28 @@ real_t hit_sphere(const point3& center, real_t radius, const ray& r)
 	}
 }
 
-color ray_color(const ray& r, const hittable_list& world, int depth)
+struct raytrace_stat
+{
+	size_t ray_count;
+	size_t bounces;
+};
+
+color ray_color(random_series* series, const ray& r, const hittable_list& world, int depth, raytrace_stat& stat)
 {
 	hit_record rec;
 
 	if (depth <= 0)
 		return color{};
 
-	if (world.hit(r, 0.001, infinity, rec)) {
+	if (world.hit_soa(r, 0.001, infinity, rec)) {
 		ray scattered;
 		color attenuation;
 		auto& mat = world.materials[rec.mat_index];
-		if (mat.scatter(r, rec, attenuation, scattered))
-			return attenuation * ray_color(scattered, world, depth - 1);
+		if (mat.scatter(series, r, rec, attenuation, scattered))
+		{
+			++stat.bounces;
+			return attenuation * ray_color(series, scattered, world, depth - 1, stat);
+		}
 		return color{};
 	}
 	auto unit_direction = unit_vector(r.direction());
@@ -65,7 +74,7 @@ color ray_color(const ray& r, const hittable_list& world, int depth)
 	return (1.0 - t) * color{1.0, 1.0, 1.0} + t * color{0.5, 0.7, 1.0};
 }
 
-hittable_list random_scene()
+hittable_list random_scene(random_series* series)
 {
 	hittable_list world;
 
@@ -76,8 +85,8 @@ hittable_list random_scene()
 	{
 		for (int b = -11; b < 11; ++b)
 		{
-			auto choose_mat = random_double();
-			point3 center(a + 0.9*random_double(), 0.2, b + 0.9*random_double());
+			auto choose_mat = random_double(series);
+			point3 center(a + 0.9*random_double(series), 0.2, b + 0.9*random_double(series));
 
 			if ((center - point3(4, 0.2, 0)).length() > 0.9)
 			{
@@ -85,14 +94,14 @@ hittable_list random_scene()
 
 				if (choose_mat < 0.8)
 				{
-					auto albedo = color::random() * color::random();
+					auto albedo = color::random(series) * color::random(series);
 					sphere_material = world.add(lambertian(albedo));
 					world.add(sphere{center, 0.2, sphere_material});
 				}
 				else if (choose_mat < 0.95)
 				{
-					auto albedo = color::random(0.5, 1);
-					auto fuzz = random_double(0, 0.5);
+					auto albedo = color::random(series, 0.5, 1);
+					auto fuzz = random_double(series, 0, 0.5);
 					sphere_material = world.add(metal(albedo, fuzz));
 					world.add(sphere{center, 0.2, sphere_material});
 				}
@@ -114,6 +123,8 @@ hittable_list random_scene()
 	auto material3 = world.add(metal(color(0.7, 0.6, 0.5), 0.0));
 	world.add(sphere{point3(4, 1, 0), 1.0, material3});
 
+	world.prepare_soa();
+
 	return world;
 }
 
@@ -131,9 +142,13 @@ struct RaytraceTask: public enki::ITaskSet
 	int samples_per_pixel;
 	int max_depth;
 	std::vector<ImageTile> tasks;
+	std::vector<random_series> random_series;
+	std::vector<raytrace_stat> stats;
 
-	void ExecuteRange(enki::TaskSetPartition range, uint32_t) override
+	void ExecuteRange(enki::TaskSetPartition range, uint32_t thread_ix) override
 	{
+		auto series = &random_series[thread_ix];
+		auto& stat = stats[thread_ix];
 		for (uint32_t r = range.start; r < range.end; ++r)
 		{
 			auto& tile = tasks[r];
@@ -144,10 +159,11 @@ struct RaytraceTask: public enki::ITaskSet
 					color pixel_color{0, 0, 0};
 					for (int s = 0; s < samples_per_pixel; ++s)
 					{
-						auto u = (i + random_double()) / (img->width - 1);
-						auto v = (j + random_double()) / (img->height - 1);
-						auto r = cam->get_ray(u, v);
-						pixel_color += ray_color(r, *world, max_depth);
+						auto u = (i + random_double(series)) / (img->width - 1);
+						auto v = (j + random_double(series)) / (img->height - 1);
+						auto r = cam->get_ray(series, u, v);
+						pixel_color += ray_color(series, r, *world, max_depth, stat);
+						++stat.ray_count;
 					}
 
 					auto scale = 1.0 / samples_per_pixel;
@@ -170,11 +186,11 @@ int main()
 	const int image_width = 640;
 	const int image_height = static_cast<int>(image_width / aspect_ratio);
 	const int samples_per_pixel = 10;
-	const size_t rays_count = image_width * image_height * samples_per_pixel;
 	const int max_depth = 50;
 
 	// World
-	auto world = random_scene();
+	random_series global_random_series{42};
+	auto world = random_scene(&global_random_series);
 
 	// Camera
 	point3 lookfrom(13, 2, 3);
@@ -218,6 +234,8 @@ int main()
 			tile.startY = startY;
 			tile.endY = endY;
 			job.tasks.push_back(tile);
+			job.random_series.push_back(random_series{xor_shift_32_rand(&global_random_series)});
+			job.stats.push_back(raytrace_stat{});
 		}
 	}
 
@@ -228,10 +246,19 @@ int main()
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<real_t, std::milli> pixel_only = end - start;
 
+	raytrace_stat global_stat{};
+	for (auto& s: job.stats)
+	{
+		global_stat.ray_count += s.ray_count;
+		global_stat.bounces += s.bounces;
+	}
+
 	img.write(std::cout);
 	std::cerr << "\nDone.\n";
 
 	std::cerr << "Elapsed time: " << std::chrono::duration<real_t, std::milli>(end - start).count() << "ms\n";
+	std::cerr << "Total Rays: " << real_t(global_stat.ray_count) / real_t(1000'000.0) << " MRays, Bounces: " << real_t(global_stat.bounces) / real_t(1000'000.0) << " MRays\n";
+	auto rays_count = global_stat.ray_count + global_stat.bounces;
 	std::cerr << "Ray Per Sec: " << (real_t(rays_count) / (real_t(pixel_only.count()) / 1000.0)) / 1000'000.0 << " MRays/Second\n";
 
 	return 0;

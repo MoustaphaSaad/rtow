@@ -19,13 +19,13 @@ struct material
 	real_t fuzz;
 	real_t ir;
 
-	bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const
+	bool scatter(random_series* series, const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const
 	{
 		switch (kind)
 		{
 		case KIND_LAMBERTIAN:
 		{
-			auto scatter_direction = rec.normal + random_unit_vector();
+			auto scatter_direction = rec.normal + random_unit_vector(series);
 
 			if (scatter_direction.near_zero())
 				scatter_direction = rec.normal;
@@ -37,7 +37,7 @@ struct material
 		case KIND_METAL:
 		{
 			vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-			scattered = ray(rec.p, reflected + fuzz * random_in_unit_sphere());
+			scattered = ray(rec.p, reflected + fuzz * random_in_unit_sphere(series));
 			attenuation = albedo;
 			return (dot(scattered.direction(), rec.normal) > 0);
 		}
@@ -53,7 +53,7 @@ struct material
 			bool cannot_refract = refraction_ratio * sin_theta > 1.0;
 			vec3 direction{};
 
-			if (cannot_refract || reflectance(cos_theta, refraction_ratio) > random_double())
+			if (cannot_refract || reflectance(cos_theta, refraction_ratio) > random_double(series))
 				direction = reflect(unit_direction, rec.normal);
 			else
 				direction = refract(unit_direction, rec.normal, refraction_ratio);
