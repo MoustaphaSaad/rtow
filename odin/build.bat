@@ -1,2 +1,2 @@
 @echo off
-odin run ./odin/ -o:speed
+odin build . -o:speed -out:rtow.exe -define:ENABLE_SIMD=true
