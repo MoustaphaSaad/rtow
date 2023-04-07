@@ -2,9 +2,15 @@ package main
 
 //go:generate ispc -g --target=sse2,sse4,avx1,avx2 spheres_hit.ispc -o ./build/spheres_hit.o -h ./build/spheres_hit.h
 
+type SpheresSOA struct {
+	centerX, centerY, centerZ, radius []Scalar
+	matIndex []int
+}
+
 type HittableList struct {
 	materials []Material
 	spheres   []Sphere
+	soa SpheresSOA
 }
 
 func (list *HittableList) AddSphere(h Sphere) {
@@ -18,6 +24,28 @@ func (list *HittableList) AddMaterial(m Material) int {
 
 func (list *HittableList) Clear() {
 	list.spheres = make([]Sphere, 0)
+}
+
+func roundUp(num, factor int) int {
+	if factor == 0 { return 0 }
+	if num % factor == 0 { return num }
+	return num + factor - 1 - (num + factor - 1) % factor
+}
+
+func (list *HittableList) PrepareSOA() {
+	simdCount := roundUp(len(list.spheres), 8)
+	list.soa.centerX = make([]Scalar, simdCount)
+	list.soa.centerY = make([]Scalar, simdCount)
+	list.soa.centerZ = make([]Scalar, simdCount)
+	list.soa.radius = make([]Scalar, simdCount)
+	list.soa.matIndex = make([]int, simdCount)
+	for i := 0; i < len(list.spheres); i++ {
+		list.soa.centerX[i] = list.spheres[i].Center.X
+		list.soa.centerY[i] = list.spheres[i].Center.Y
+		list.soa.centerZ[i] = list.spheres[i].Center.Z
+		list.soa.radius[i] = list.spheres[i].Radius
+		list.soa.matIndex[i] = list.spheres[i].MaterialIndex
+	}
 }
 
 func (list *HittableList) Hit(r Ray, tMin, tMax Scalar) (rec *HitRecord) {

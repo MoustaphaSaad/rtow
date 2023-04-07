@@ -106,6 +106,8 @@ func randomScene() HittableList {
 	material3 := world.AddMaterial(Metal(Color{0.7, 0.6, 0.5}, 0))
 	world.AddSphere(Sphere{Point3{4, 1, 0}, 1.0, material3})
 
+	world.PrepareSOA()
+
 	return world
 }
 
