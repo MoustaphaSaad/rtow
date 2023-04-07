@@ -34,9 +34,26 @@ func Min(v1, v2 Scalar) Scalar {
 	}
 }
 
+func Max(v1, v2 Scalar) Scalar {
+	if v1 > v2 {
+		return v1
+	} else {
+		return v2
+	}
+}
+
 func Pow(b, e Scalar) Scalar {
 	return Scalar(math.Pow(float64(b), float64(e)))
 }
+
+func Sin(a Scalar) Scalar {
+	return Scalar(math.Sin(float64(a)))
+}
+
+func Cos(a Scalar) Scalar {
+	return Scalar(math.Cos(float64(a)))
+}
+
 
 
 type RandomSeries struct {
@@ -158,15 +175,23 @@ func RandomVec3InRange(series *RandomSeries, min, max Scalar) Vec3 {
 }
 
 func RandomInUnitSphere(series *RandomSeries) Vec3 {
-	for {
-		p := RandomVec3InRange(series, -1, 1)
-		if p.LengthSquared() >= 1 { continue }
-		return p
-	}
+	z := RandomDoubleInRange(series, -1, 1)
+	t := RandomDoubleInRange(series, 0, 2 * pi)
+	r := Sqrt(Max(0.0, 1.0 - z * z))
+	x := r * Cos(t)
+	y := r * Sin(t)
+	res := Vec3{x, y, z}
+	res = res.Mul(Pow(RandomDouble(series), 1.0 / 3.0))
+	return res;
 }
 
 func RandomUnitVector(series *RandomSeries) Vec3 {
-	return RandomInUnitSphere(series).UnitVector()
+	z := RandomDoubleInRange(series, -1, 1)
+	a := RandomDoubleInRange(series, 0, 2 * pi)
+	r := Sqrt(Scalar(1) - z * z)
+	x := r * Cos(a)
+	y := r * Sin(a)
+	return Vec3 {x, y, z}
 }
 
 func RandomInHemisphere(series *RandomSeries, normal Vec3) Vec3 {
