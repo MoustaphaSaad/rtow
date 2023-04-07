@@ -1,14 +1,3 @@
-export void simple(uniform float vin[], uniform float vout[], uniform int count) {
-	foreach (index = 0 ... count) {
-		float v = vin[index];
-		if (v < 3.0)
-			v = v * v;
-		else
-			v = sqrt(v);
-		vout[index] = v;
-	}
-}
-
 typedef float<3> float3;
 
 struct Ray
