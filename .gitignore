@@ -27,6 +27,8 @@ examples/example-hot-reload-lib-exports.h
 _deps
 *.ppm
 *.exe
+*.o
+./golang/**/*.h
 
 # User-specific files
 *.suo

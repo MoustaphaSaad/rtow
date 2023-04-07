@@ -46,15 +46,16 @@ func degressToRadians(degrees Scalar) Scalar {
 	return degrees * pi / 180
 }
 
-func rayColor(r Ray, world *HittableList, depth int) Color {
+func rayColor(series *RandomSeries, r Ray, world *HittableList, depth int, stat *RaytraceStat) Color {
 	if depth <= 0 {
 		return Color{}
 	}
 
-	if rec := world.Hit(r, 0.001, infinity); rec != nil {
+	if rec := world.HitSOA(r, 0.001, infinity); rec != nil {
 		m := &world.materials[rec.MaterialIndex]
-		if attenuation, scattered := m.Scatter(r, rec); scattered != nil {
-			return attenuation.HMul(rayColor(*scattered, world, depth - 1))
+		if attenuation, scattered := m.Scatter(series, r, rec); scattered != nil {
+			stat.bounces++
+			return attenuation.HMul(rayColor(series, *scattered, world, depth - 1, stat))
 		}
 		return Color{}
 	}
@@ -65,7 +66,7 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 	return startColor.Mul(1 - t).Add(endColor.Mul(t))
 }
 
-func randomScene() HittableList {
+func randomScene(series *RandomSeries) HittableList {
 	var world HittableList
 
 	groundMaterial := world.AddMaterial(Lambertian(Color{0.5, 0.5, 0.5}))
@@ -73,19 +74,19 @@ func randomScene() HittableList {
 
 	for a := -11; a < 11; a++ {
 		for b := -11; b < 11; b++ {
-			chooseMat := RandomDouble();
-			center := Point3{Scalar(a) + 0.9*RandomDouble(), 0.2, Scalar(b) + 0.9*RandomDouble()}
+			chooseMat := RandomDouble(series);
+			center := Point3{Scalar(a) + 0.9*RandomDouble(series), 0.2, Scalar(b) + 0.9*RandomDouble(series)}
 
 			if center.Sub(Point3{4, 0.2, 0}).Length() > 0.9 {
 				var sphereMaterial int
 
 				if chooseMat < 0.8 {
-					albedo := RandomVec3()
+					albedo := RandomVec3(series)
 					sphereMaterial = world.AddMaterial(Lambertian(albedo))
 					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else if chooseMat < 0.95 {
-					albedo := RandomVec3InRange(0.5, 1)
-					fuzz := RandomDoubleInRange(0, 0.5)
+					albedo := RandomVec3InRange(series, 0.5, 1)
+					fuzz := RandomDoubleInRange(series, 0, 0.5)
 					sphereMaterial = world.AddMaterial(Metal(albedo, fuzz))
 					world.AddSphere(Sphere{center, 0.2, sphereMaterial})
 				} else {
@@ -105,7 +106,13 @@ func randomScene() HittableList {
 	material3 := world.AddMaterial(Metal(Color{0.7, 0.6, 0.5}, 0))
 	world.AddSphere(Sphere{Point3{4, 1, 0}, 1.0, material3})
 
+	world.PrepareSOA()
+
 	return world
+}
+
+type RaytraceStat struct {
+	ray_count, bounces int
 }
 
 type ImageTile struct {
@@ -122,16 +129,17 @@ type TileTask struct {
 	maxDepth int
 }
 
-func traceTile(c <-chan TileTask, wg *sync.WaitGroup) {
+func traceTile(c <-chan TileTask, wg *sync.WaitGroup, stat *RaytraceStat, series *RandomSeries) {
 	for j := range c {
 		for y := j.tile.StartY; y < j.tile.EndY; y++ {
 			for x := j.tile.StartX; x < j.tile.EndX; x++ {
 				pixelColor := Color{0, 0, 0}
 				for s := 0; s < j.samplesPerPixel; s++ {
-					u := (Scalar(x) + Rand()) / Scalar(j.img.width - 1)
-					v := (Scalar(y) + Rand()) / Scalar(j.img.height - 1)
-					r := j.cam.ray(u, v)
-					pixelColor = pixelColor.Add(rayColor(r, j.world, j.maxDepth))
+					u := (Scalar(x) + Rand(series)) / Scalar(j.img.width - 1)
+					v := (Scalar(y) + Rand(series)) / Scalar(j.img.height - 1)
+					r := j.cam.ray(series, u, v)
+					pixelColor = pixelColor.Add(rayColor(series, r, j.world, j.maxDepth, stat))
+					stat.ray_count++
 				}
 
 				scale := 1.0 / Scalar(j.samplesPerPixel)
@@ -168,11 +176,11 @@ func main() {
 	var imageWidth = 640
 	var imageHeight = int(Scalar(imageWidth) / aspectRatio)
 	var samplesPerPixel = 10
-	var raysCount = imageWidth * imageHeight * samplesPerPixel
 	var maxDepth = 50
 
 	// World
-	world := randomScene()
+	globalSeries := &RandomSeries{42}
+	world := randomScene(globalSeries)
 
 	// Camera
 	lookFrom := Point3{13, 2, 3}
@@ -188,8 +196,11 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(runtime.NumCPU())
 	workChan := make(chan TileTask, runtime.NumCPU() * 2)
+	workerStat := make([]RaytraceStat, runtime.NumCPU())
+	workerRandomSeries := make([]RandomSeries, runtime.NumCPU())
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go traceTile(workChan, &wg)
+		workerRandomSeries[i].state = globalSeries.Rand()
+		go traceTile(workChan, &wg, &workerStat[i], &workerRandomSeries[i])
 	}
 
 	tileSizeX := 16
@@ -230,7 +241,15 @@ func main() {
 
 	img.Write()
 
+	totalStat := RaytraceStat{}
+	for _, stat := range workerStat {
+		totalStat.ray_count += stat.ray_count
+		totalStat.bounces += stat.bounces
+	}
+
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
 	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", elapsedTime)
+	fmt.Fprintf(os.Stderr, "Total Rays: %.2f MRays, Bounces: %.2f MRays\n", float64(totalStat.ray_count) / 1000000, float64(totalStat.bounces) / 1000000)
+	raysCount := totalStat.ray_count + totalStat.bounces
 	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / elapsedTime.Seconds()) / 1000000)
 }

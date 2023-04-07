@@ -34,21 +34,21 @@ func Dielectric(indexOfRefraction Scalar) (res Material) {
 	return
 }
 
-func (m *Material) Scatter(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
+func (m *Material) Scatter(series *RandomSeries, rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	switch m.Kind {
 	case MaterialKindLambertian:
-		return m.ScatterLambertian(rIn, rec)
+		return m.ScatterLambertian(series, rIn, rec)
 	case MaterialKindMetal:
-		return m.ScatterMetal(rIn, rec)
+		return m.ScatterMetal(series, rIn, rec)
 	case MaterialKindDielectric:
-		return m.ScatterDielectric(rIn, rec)
+		return m.ScatterDielectric(series, rIn, rec)
 	default:
 		return
 	}
 }
 
-func (m *Material) ScatterLambertian(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
-	scatterDirection := rec.Normal.Add(RandomUnitVector())
+func (m *Material) ScatterLambertian(series *RandomSeries, rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
+	scatterDirection := rec.Normal.Add(RandomUnitVector(series))
 
 	if scatterDirection.NearZero() {
 		scatterDirection = rec.Normal
@@ -62,9 +62,9 @@ func (m *Material) ScatterLambertian(rIn Ray, rec *HitRecord) (attenuation Color
 	return
 }
 
-func (m *Material) ScatterMetal(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
+func (m *Material) ScatterMetal(series *RandomSeries, rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	reflected := rIn.Dir.UnitVector().Reflect(rec.Normal)
-	dir := reflected.Add(RandomInUnitSphere().Mul(m.Fuzz))
+	dir := reflected.Add(RandomInUnitSphere(series).Mul(m.Fuzz))
 	if dir.Dot(rec.Normal) > 0 {
 		scattered = &Ray{
 			Orig: rec.P,
@@ -75,7 +75,7 @@ func (m *Material) ScatterMetal(rIn Ray, rec *HitRecord) (attenuation Color, sca
 	return
 }
 
-func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
+func (m *Material) ScatterDielectric(series *RandomSeries, rIn Ray, rec *HitRecord) (attenuation Color, scattered *Ray) {
 	attenuation = Color{1, 1, 1}
 	refraction_ratio := m.IndexOfRefraction
 	if rec.FrontFace {
@@ -88,7 +88,7 @@ func (m *Material) ScatterDielectric(rIn Ray, rec *HitRecord) (attenuation Color
 
 	cannot_refract := refraction_ratio*sin_theta > 1
 	var direction Vec3
-	if cannot_refract || Reflectance(cos_theta, refraction_ratio) > RandomDouble() {
+	if cannot_refract || Reflectance(cos_theta, refraction_ratio) > RandomDouble(series) {
 		direction = unit_direction.Reflect(rec.Normal)
 	} else {
 		direction = unit_direction.Refract(rec.Normal, refraction_ratio)
