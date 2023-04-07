@@ -46,7 +46,7 @@ func degressToRadians(degrees Scalar) Scalar {
 	return degrees * pi / 180
 }
 
-func rayColor(r Ray, world *HittableList, depth int) Color {
+func rayColor(r Ray, world *HittableList, depth int, stat *RaytraceStat) Color {
 	if depth <= 0 {
 		return Color{}
 	}
@@ -54,7 +54,8 @@ func rayColor(r Ray, world *HittableList, depth int) Color {
 	if rec := world.Hit(r, 0.001, infinity); rec != nil {
 		m := &world.materials[rec.MaterialIndex]
 		if attenuation, scattered := m.Scatter(r, rec); scattered != nil {
-			return attenuation.HMul(rayColor(*scattered, world, depth - 1))
+			stat.bounces++
+			return attenuation.HMul(rayColor(*scattered, world, depth - 1, stat))
 		}
 		return Color{}
 	}
@@ -108,6 +109,10 @@ func randomScene() HittableList {
 	return world
 }
 
+type RaytraceStat struct {
+	ray_count, bounces int
+}
+
 type ImageTile struct {
 	StartX, StartY int
 	EndX, EndY int
@@ -122,7 +127,7 @@ type TileTask struct {
 	maxDepth int
 }
 
-func traceTile(c <-chan TileTask, wg *sync.WaitGroup) {
+func traceTile(c <-chan TileTask, wg *sync.WaitGroup, stat *RaytraceStat) {
 	for j := range c {
 		for y := j.tile.StartY; y < j.tile.EndY; y++ {
 			for x := j.tile.StartX; x < j.tile.EndX; x++ {
@@ -131,7 +136,8 @@ func traceTile(c <-chan TileTask, wg *sync.WaitGroup) {
 					u := (Scalar(x) + Rand()) / Scalar(j.img.width - 1)
 					v := (Scalar(y) + Rand()) / Scalar(j.img.height - 1)
 					r := j.cam.ray(u, v)
-					pixelColor = pixelColor.Add(rayColor(r, j.world, j.maxDepth))
+					pixelColor = pixelColor.Add(rayColor(r, j.world, j.maxDepth, stat))
+					stat.ray_count++
 				}
 
 				scale := 1.0 / Scalar(j.samplesPerPixel)
@@ -168,7 +174,6 @@ func main() {
 	var imageWidth = 640
 	var imageHeight = int(Scalar(imageWidth) / aspectRatio)
 	var samplesPerPixel = 10
-	var raysCount = imageWidth * imageHeight * samplesPerPixel
 	var maxDepth = 50
 
 	// World
@@ -188,8 +193,9 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(runtime.NumCPU())
 	workChan := make(chan TileTask, runtime.NumCPU() * 2)
+	worker_stat := make([]RaytraceStat, runtime.NumCPU())
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go traceTile(workChan, &wg)
+		go traceTile(workChan, &wg, &worker_stat[i])
 	}
 
 	tileSizeX := 16
@@ -230,7 +236,15 @@ func main() {
 
 	img.Write()
 
+	totalStat := RaytraceStat{}
+	for _, stat := range worker_stat {
+		totalStat.ray_count += stat.ray_count
+		totalStat.bounces += stat.bounces
+	}
+
 	fmt.Fprintf(os.Stderr, "\nDone.\n")
 	fmt.Fprintf(os.Stderr, "Elapsed time: %v\n", elapsedTime)
+	fmt.Fprintf(os.Stderr, "Total Rays: %.2f MRays, Bounces: %.2f MRays\n", float64(totalStat.ray_count) / 1000000, float64(totalStat.bounces) / 1000000)
+	raysCount := totalStat.ray_count + totalStat.bounces
 	fmt.Fprintf(os.Stderr, "Ray Per Sec: %.2f MRays/Second\n", (float64(raysCount) / elapsedTime.Seconds()) / 1000000)
 }
