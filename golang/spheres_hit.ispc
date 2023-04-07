@@ -22,12 +22,13 @@ export uniform bool spheres_hit(
 	uniform const float center_z[],
 	uniform const float radius[],
 	uniform int spheres_count,
-	uniform const Ray& ray,
+	uniform const Ray ray_array[],
 	uniform float t_min,
 	uniform float t_max,
 	uniform float out_t[],
 	uniform int out_hit_index[])
 {
+	uniform Ray ray = ray_array[0];
 	float closest_so_far = t_max;
 	uniform bool hit = false;
 	int hit_index = 0;
