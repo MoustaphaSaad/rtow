@@ -1,7 +1,9 @@
 package main
 
-//go:generate ispc -g --target=sse2,sse4,avx1,avx2 spheres_hit.ispc -o ./build/spheres_hit.o
+//go:generate ispc --pic -g --target=sse2,sse4,avx1,avx2 spheres_hit.ispc -o ./build/spheres_hit.o
+//go:generate ar -rcs ./build/spheres_hit.a ./build/*.o
 
+// #cgo LDFLAGS: ./build/spheres_hit.a
 // #include "spheres_hit.h"
 import "C"
 
