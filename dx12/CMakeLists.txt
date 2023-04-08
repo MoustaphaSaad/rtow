@@ -10,4 +10,5 @@ add_executable(rtow
 	main.cpp
 )
 
+target_link_libraries(rtow PRIVATE d3d12 dxgi dxguid d3dcompiler)
 target_compile_features(rtow PUBLIC cxx_std_17)
