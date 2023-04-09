@@ -80,12 +80,41 @@ int main()
 	res = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&command_allocator));
 	assert(SUCCEEDED(res));
 
-	ID3D12CommandList* command_list = nullptr;
-	res = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator, pipeline_state, IID_PPV_ARGS(&command_list));
+	D3D12_ROOT_PARAMETER parameters[1] = {};
+	parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	parameters[0].Descriptor.ShaderRegister = 0;
+	parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_SIGNATURE_DESC root_signature_desc{};
+	root_signature_desc.pParameters = parameters;
+	root_signature_desc.NumParameters = sizeof(parameters) / sizeof(*parameters);
+
+	ID3D10Blob* root_signature_blob = nullptr;
+	ID3D10Blob* root_signature_error = nullptr;
+	res = D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &root_signature_blob, &root_signature_error);
+	assert(SUCCEEDED(res));
+	// freeing error immediatly because we don't handle error at the moment
+	if (root_signature_error) root_signature_error->Release();
+
+	ID3D12RootSignature* root_signature = nullptr;
+	res = device->CreateRootSignature(0, root_signature_blob->GetBufferPointer(), root_signature_blob->GetBufferSize(), IID_PPV_ARGS(&root_signature));
 	assert(SUCCEEDED(res));
 
+	ID3D12PipelineState* compute_pipeline = nullptr;
+	D3D12_COMPUTE_PIPELINE_STATE_DESC compute_pipeline_desc{};
+	compute_pipeline_desc.pRootSignature = root_signature;
+	compute_pipeline_desc.CS = ???;
+	res = device->CreateComputePipelineState(compute_pipeline_desc, IID_PPV_ARGS(&compute_pipeline));
+	assert(SUCCEEDED(res));
+
+	ID3D12GraphicsCommandList* command_list = nullptr;
+	res = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator, compute_pipeline, IID_PPV_ARGS(&command_list));
+	assert(SUCCEEDED(res));
+
+	command_list->Dispatch(1, 1, 1);
 
 	command_allocator->Release();
+	compute_pipeline->Release();
 	command_queue->Release();
 	device->Release();
 	adapter->Release();
