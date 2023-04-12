@@ -1,12 +1,37 @@
 #include <stdio.h>
 #include <assert.h>
+#include <vector>
+#include <fstream>
 
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_4.h>
 
+inline std::vector<char> readFile(const std::string& filename)
+{
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+	bool exists = (bool)file;
+
+	if (!exists || !file.is_open())
+	{
+		throw std::runtime_error("failed to open file!");
+	}
+
+	size_t fileSize = (size_t)file.tellg();
+	std::vector<char> buffer(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+
+	file.close();
+
+	return buffer;
+};
+
+
 int main()
 {
+	auto cs_simple_bytecode = readFile("simple.so");
 	// debug interface
 	ID3D12Debug1* debugger = nullptr;
 	UINT dxgi_factory_flags = 0;
@@ -103,8 +128,9 @@ int main()
 	ID3D12PipelineState* compute_pipeline = nullptr;
 	D3D12_COMPUTE_PIPELINE_STATE_DESC compute_pipeline_desc{};
 	compute_pipeline_desc.pRootSignature = root_signature;
-	compute_pipeline_desc.CS = ???;
-	res = device->CreateComputePipelineState(compute_pipeline_desc, IID_PPV_ARGS(&compute_pipeline));
+	compute_pipeline_desc.CS.pShaderBytecode = cs_simple_bytecode.data();
+	compute_pipeline_desc.CS.BytecodeLength = cs_simple_bytecode.size();
+	res = device->CreateComputePipelineState(&compute_pipeline_desc, IID_PPV_ARGS(&compute_pipeline));
 	assert(SUCCEEDED(res));
 
 	ID3D12GraphicsCommandList* command_list = nullptr;
