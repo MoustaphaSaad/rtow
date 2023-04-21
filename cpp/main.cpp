@@ -128,6 +128,67 @@ hittable_list random_scene(random_series* series)
 	return world;
 }
 
+hittable_list aras_scene(random_series* series)
+{
+	hittable_list world;
+
+	world.add(sphere{point3(0,-100.5,-1), 100, world.add(lambertian(color(0.8, 0.8, 0.8)))});
+	world.add(sphere{point3(2,0,-1), 0.5, world.add(lambertian(color(0.8, 0.4, 0.4)))});
+	world.add(sphere{point3(0,0,-1), 0.5, world.add(lambertian(color(0.4, 0.8, 0.4)))});
+	world.add(sphere{point3(-2,0,-1), 0.5, world.add(metal(color(0.4, 0.4, 0.8), 0))});
+	world.add(sphere{point3(2,0,1), 0.5, world.add(metal(color(0.4, 0.8, 0.4), 0))});
+	world.add(sphere{point3(0,0,1), 0.5, world.add(metal(color(0.4, 0.8, 0.4), 0.2))});
+	world.add(sphere{point3(-2,0,1), 0.5, world.add(metal(color(0.4, 0.8, 0.4), 0.6))});
+	world.add(sphere{point3(0.5,1,0.5), 0.5, world.add(dielectric(1.5))});
+	world.add(sphere{point3(-1.5,1.5,0), 0.3, world.add(lambertian(color(0.8, 0.6, 0.2)))});
+
+	world.add(sphere{point3(4,0,-3), 0.5, world.add(lambertian(color(0.1,0.1,0.1)))});
+	world.add(sphere{point3(3,0,-3), 0.5, world.add(lambertian(color(0.2,0.2,0.2)))});
+	world.add(sphere{point3(2,0,-3), 0.5, world.add(lambertian(color(0.3,0.3,0.3)))});
+	world.add(sphere{point3(1,0,-3), 0.5, world.add(lambertian(color(0.4,0.4,0.4)))});
+	world.add(sphere{point3(0,0,-3), 0.5, world.add(lambertian(color(0.5,0.5,0.5)))});
+	world.add(sphere{point3(-1,0,-3), 0.5, world.add(lambertian(color(0.6,0.6,0.6)))});
+	world.add(sphere{point3(-2,0,-3), 0.5, world.add(lambertian(color(0.7,0.7,0.7)))});
+	world.add(sphere{point3(-3,0,-3), 0.5, world.add(lambertian(color(0.8,0.8,0.8)))});
+	world.add(sphere{point3(-4,0,-3), 0.5, world.add(lambertian(color(0.9,0.9,0.9)))});
+
+	world.add(sphere{point3(4,0,-4), 0.5, world.add(metal(color(0.1,0.1,0.1), 0))});
+	world.add(sphere{point3(3,0,-4), 0.5, world.add(metal(color(0.2,0.2,0.2), 0))});
+	world.add(sphere{point3(2,0,-4), 0.5, world.add(metal(color(0.3,0.3,0.3), 0))});
+	world.add(sphere{point3(1,0,-4), 0.5, world.add(metal(color(0.4,0.4,0.4), 0))});
+	world.add(sphere{point3(0,0,-4), 0.5, world.add(metal(color(0.5,0.5,0.5), 0))});
+	world.add(sphere{point3(-1,0,-4), 0.5, world.add(metal(color(0.6,0.6,0.6), 0))});
+	world.add(sphere{point3(-2,0,-4), 0.5, world.add(metal(color(0.7,0.7,0.7), 0))});
+	world.add(sphere{point3(-3,0,-4), 0.5, world.add(metal(color(0.8,0.8,0.8), 0))});
+	world.add(sphere{point3(-4,0,-4), 0.5, world.add(metal(color(0.9,0.9,0.9), 0))});
+
+	world.add(sphere{point3(4,0,-5), 0.5, world.add(metal(color(0.8,0.1,0.1), 0))});
+	world.add(sphere{point3(3,0,-5), 0.5, world.add(metal(color(0.8,0.5,0.1), 0))});
+	world.add(sphere{point3(2,0,-5), 0.5, world.add(metal(color(0.8,0.8,0.1), 0))});
+	world.add(sphere{point3(1,0,-5), 0.5, world.add(metal(color(0.4,0.8,0.1), 0))});
+	world.add(sphere{point3(0,0,-5), 0.5, world.add(metal(color(0.1,0.8,0.1), 0))});
+	world.add(sphere{point3(-1,0,-5), 0.5, world.add(metal(color(0.1,0.8,0.5), 0))});
+	world.add(sphere{point3(-2,0,-5), 0.5, world.add(metal(color(0.1,0.8,0.8), 0))});
+	world.add(sphere{point3(-3,0,-5), 0.5, world.add(metal(color(0.1,0.1,0.8), 0))});
+	world.add(sphere{point3(-4,0,-5), 0.5, world.add(metal(color(0.5,0.1,0.8), 0))});
+
+	world.add(sphere{point3(4,0,-6), 0.5, world.add(lambertian(color(0.8,0.1,0.1)))});
+	world.add(sphere{point3(3,0,-6), 0.5, world.add(lambertian(color(0.8,0.5,0.1)))});
+	world.add(sphere{point3(2,0,-6), 0.5, world.add(lambertian(color(0.8,0.8,0.1)))});
+	world.add(sphere{point3(1,0,-6), 0.5, world.add(lambertian(color(0.4,0.8,0.1)))});
+	world.add(sphere{point3(0,0,-6), 0.5, world.add(lambertian(color(0.1,0.8,0.1)))});
+	world.add(sphere{point3(-1,0,-6), 0.5, world.add(lambertian(color(0.1,0.8,0.5)))});
+	world.add(sphere{point3(-2,0,-6), 0.5, world.add(lambertian(color(0.1,0.8,0.8)))});
+	world.add(sphere{point3(-3,0,-6), 0.5, world.add(lambertian(color(0.1,0.1,0.8)))});
+	world.add(sphere{point3(-4,0,-6), 0.5, world.add(metal(color(0.5,0.1,0.8), 0))});
+
+	world.add(sphere{point3(1.5,1.5,-2), 0.3, world.add(lambertian(color(0.1,0.2,0.5)))});
+
+	world.prepare_soa();
+
+	return world;
+}
+
 struct ImageTile
 {
 	int startX, startY;
@@ -190,7 +251,7 @@ int main()
 
 	// World
 	random_series global_random_series{42};
-	auto world = random_scene(&global_random_series);
+	auto world = aras_scene(&global_random_series);
 
 	// Camera
 	point3 lookfrom(13, 2, 3);
@@ -198,7 +259,8 @@ int main()
 	vec3 vup(0, 1, 0);
 	auto dist_to_focus = 10;
 	auto aperture = 0.1;
-	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+	// camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+	camera cam(point3(0, 2, 3), point3(0, 0, 0), vec3(0, 1, 0), 60, aspect_ratio, aperture, 3);
 
 	image img{image_width, image_height};
 
