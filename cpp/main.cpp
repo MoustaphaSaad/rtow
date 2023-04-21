@@ -240,8 +240,6 @@ int main()
 	enki::TaskScheduler ts;
 	ts.Initialize();
 
-	auto start = std::chrono::high_resolution_clock::now();
-
 	// Image
 	const auto aspect_ratio = 16.0 / 9.0;
 	const int image_width = 640;
@@ -300,6 +298,8 @@ int main()
 			job.stats.push_back(raytrace_stat{});
 		}
 	}
+
+	auto start = std::chrono::high_resolution_clock::now();
 
 	job.m_SetSize = job.tasks.size();
 	ts.AddTaskSetToPipe(&job);
