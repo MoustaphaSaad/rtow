@@ -1,5 +1,7 @@
 #include "stdio.h"
 
+#include <vector>
+
 #include <d3d11.h>
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
@@ -9,13 +11,86 @@
 #define NOMINMAX
 #include <Windows.h>
 
+const char* WINDOW_CLASS = "rtow_window_class";
+
+struct Window
+{
+	int width, height;
+	const char* title;
+	HWND handle;
+	HDC hdc;
+};
+
 struct Renderer
 {
 	IDXGIFactory* factory;
 	IDXGIAdapter* adapter;
 	ID3D11Device* device;
 	ID3D11DeviceContext* context;
+	IDXGISwapChain* swapchain;
 };
+
+IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
+{
+	DXGI_SWAP_CHAIN_DESC desc{};
+	ZeroMemory(&desc, sizeof(desc));
+	desc.BufferCount = 1;
+	desc.BufferDesc.Width = window.width;
+	desc.BufferDesc.Height = window.height;
+	desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	IDXGIOutput* output = nullptr;
+	auto res = self.adapter->EnumOutputs(0, &output);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to enum output of DXGIAdapter");
+		exit(EXIT_FAILURE);
+	}
+
+	UINT modes_count = 0;
+	res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, NULL);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to enum available modes for this DXGIOutput");
+		exit(EXIT_FAILURE);
+	}
+
+	std::vector<DXGI_MODE_DESC> modes{modes_count};
+	res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, modes.data());
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to enum available modes for this DXGIOutput");
+		exit(EXIT_FAILURE);
+	}
+	output->Release();
+
+	for (const auto& mode: modes)
+	{
+		if (mode.Width == desc.BufferDesc.Width && mode.Height == desc.BufferDesc.Height)
+		{
+			desc.BufferDesc.RefreshRate = mode.RefreshRate;
+		}
+	}
+
+	desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	desc.OutputWindow = window.handle;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Windowed = TRUE;
+	desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+	IDXGISwapChain* swapchain = nullptr;
+	res = self.factory->CreateSwapChain(self.device, &desc, &swapchain);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create swapchain");
+		exit(EXIT_FAILURE);
+	}
+
+	return swapchain;
+}
 
 Renderer renderer_new()
 {
@@ -79,17 +154,8 @@ void renderer_free(Renderer& self)
 	self.device->Release();
 	self.adapter->Release();
 	self.factory->Release();
+	if (self.swapchain) self.swapchain->Release();
 }
-
-const char* WINDOW_CLASS = "rtow_window_class";
-
-struct Window
-{
-	int width, height;
-	const char* title;
-	HWND handle;
-	HDC hdc;
-};
 
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -105,7 +171,7 @@ LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpa
 	return 0;
 }
 
-void register_window_class(const char* window_class)
+void window_register_class(const char* window_class)
 {
 	WNDCLASSEX wc{};
 	ZeroMemory(&wc, sizeof(wc));
@@ -119,7 +185,7 @@ void register_window_class(const char* window_class)
 	RegisterClassEx(&wc);
 }
 
-Window create_window(int width, int height, const char* title)
+Window window_new(int width, int height, const char* title)
 {
 	Window self{};
 	self.width = width;
@@ -158,7 +224,7 @@ Window create_window(int width, int height, const char* title)
 	return self;
 }
 
-void close_window(Window& self)
+void window_free(Window& self)
 {
 	ReleaseDC(self.handle, self.hdc);
 	DestroyWindow(self.handle);
@@ -168,21 +234,23 @@ int main(int argc, char** argv)
 {
 	auto renderer = renderer_new();
 
-	register_window_class(WINDOW_CLASS);
-	auto window = create_window(800, 600, "RTOW");
+	window_register_class(WINDOW_CLASS);
+	auto window = window_new(800, 600, "RTOW");
+
+	renderer.swapchain = renderer_create_swapchain(renderer, window);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
 	while (msg.message != WM_QUIT)
 	{
-		if (PeekMessage(&msg, window.handle, 0, 0, PM_REMOVE))
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 	}
 
-	close_window(window);
+	window_free(window);
 	renderer_free(renderer);
 	return 0;
 }
