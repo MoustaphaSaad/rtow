@@ -12,6 +12,15 @@
 #include <Windows.h>
 
 const char* WINDOW_CLASS = "rtow_window_class";
+float RECT_VERTICES[] = {
+	-0.5, -0.5,
+	 0.5,  0.5,
+	-0.5,  0.5,
+
+	-0.5, -0.5,
+	 0.5, -0.5,
+	 0.5,  0.5
+};
 
 struct Window
 {
@@ -28,6 +37,7 @@ struct Renderer
 	ID3D11Device* device;
 	ID3D11DeviceContext* context;
 	IDXGISwapChain* swapchain;
+	ID3D11Buffer* screen_rect_vertices;
 };
 
 IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
@@ -90,6 +100,26 @@ IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
 	}
 
 	return swapchain;
+}
+
+ID3D11Buffer* renderer_create_vertex_buffer(Renderer& self, void* ptr, size_t size)
+{
+	D3D11_BUFFER_DESC desc{};
+	desc.ByteWidth = size;
+	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER,
+	desc.Usage = D3D11_USAGE_IMMUTABLE;
+	D3D11_SUBRESOURCE_DATA data_desc{};
+	data_desc.pSysMem = ptr;
+
+	ID3D11Buffer* buffer;
+	auto res = self.device->CreateBuffer(&desc, &data_desc, &buffer);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create buffer");
+		exit(EXIT_FAILURE);
+	}
+
+	return buffer;
 }
 
 Renderer renderer_new()
@@ -155,6 +185,7 @@ void renderer_free(Renderer& self)
 	self.adapter->Release();
 	self.factory->Release();
 	if (self.swapchain) self.swapchain->Release();
+	if (self.screen_rect_vertices) self.screen_rect_vertices->Release();
 }
 
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -238,6 +269,7 @@ int main(int argc, char** argv)
 	auto window = window_new(800, 600, "RTOW");
 
 	renderer.swapchain = renderer_create_swapchain(renderer, window);
+	renderer.screen_rect_vertices = renderer_create_vertex_buffer(renderer, RECT_VERTICES, sizeof(RECT_VERTICES));
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
