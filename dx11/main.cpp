@@ -11,7 +11,6 @@
 #define NOMINMAX
 #include <Windows.h>
 
-const char* WINDOW_CLASS = "rtow_window_class";
 float RECT_VERTICES[] = {
 	-0.5, -0.5,
 	 0.5,  0.5,
@@ -21,6 +20,41 @@ float RECT_VERTICES[] = {
 	 0.5, -0.5,
 	 0.5,  0.5
 };
+const char* RECT_VERTEX_SHADER = R"SHADER(
+struct VS_Input
+{
+	float2 pos: POSITION;
+};
+
+struct VS_Output
+{
+	float4 pos: SV_POSITION;
+	float2 uv: TEXCOORD0;
+};
+
+VS_Output main(VS_Input input)
+{
+	VS_Output output;
+	output.pos = float4(input.pos, 0, 1);
+	output.uv = input.pos + float2(0.5, 0.5);
+	return output;
+}
+)SHADER";
+
+const char* RECT_PIXEL_SHADER = R"SHADER(
+struct PS_Input
+{
+	float4 pos: SV_POSITION;
+	float2 uv: TEXCOORD0;
+};
+
+float4 main(PS_Input input): SV_TARGET
+{
+	return float4(1, 0, 0, 1);
+}
+)SHADER";
+
+const char* WINDOW_CLASS = "rtow_window_class";
 
 struct Window
 {
@@ -38,6 +72,8 @@ struct Renderer
 	ID3D11DeviceContext* context;
 	IDXGISwapChain* swapchain;
 	ID3D11Buffer* screen_rect_vertices;
+	ID3D11VertexShader* screen_rect_vertex_shader;
+	ID3D11PixelShader* screen_rect_pixel_shader;
 };
 
 IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
@@ -122,6 +158,74 @@ ID3D11Buffer* renderer_create_vertex_buffer(Renderer& self, void* ptr, size_t si
 	return buffer;
 }
 
+ID3D11VertexShader* renderer_create_vertex_shader(Renderer& self, const char* code)
+{
+	ID3D10Blob* error = nullptr;
+	UINT compile_flags = 0;
+	#if defined(_DEBUG)
+		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+	#endif
+
+	ID3D10Blob* shader_blob;
+	auto res = D3DCompile(code, strlen(code), NULL, NULL, NULL, "main", "vs_5_0", compile_flags, 0, &shader_blob, &error);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
+		exit(EXIT_FAILURE);
+	}
+
+	ID3D11VertexShader* vertex_shader = nullptr;
+	res = self.device->CreateVertexShader(
+		shader_blob->GetBufferPointer(),
+		shader_blob->GetBufferSize(),
+		NULL,
+		&vertex_shader
+	);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create vertex shader\n");
+		exit(EXIT_FAILURE);
+	}
+
+	shader_blob->Release();
+
+	return vertex_shader;
+}
+
+ID3D11PixelShader* renderer_create_pixel_shader(Renderer& self, const char* code)
+{
+	ID3D10Blob* error = nullptr;
+	UINT compile_flags = 0;
+	#if defined(_DEBUG)
+		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+	#endif
+
+	ID3D10Blob* shader_blob;
+	auto res = D3DCompile(code, strlen(code), NULL, NULL, NULL, "main", "ps_5_0", compile_flags, 0, &shader_blob, &error);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
+		exit(EXIT_FAILURE);
+	}
+
+	ID3D11PixelShader* pixel_shader = nullptr;
+	res = self.device->CreatePixelShader(
+		shader_blob->GetBufferPointer(),
+		shader_blob->GetBufferSize(),
+		NULL,
+		&pixel_shader
+	);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create pixel shader\n");
+		exit(EXIT_FAILURE);
+	}
+
+	shader_blob->Release();
+
+	return pixel_shader;
+}
+
 Renderer renderer_new()
 {
 	Renderer self{};
@@ -180,12 +284,14 @@ Renderer renderer_new()
 
 void renderer_free(Renderer& self)
 {
+	if (self.swapchain) self.swapchain->Release();
+	if (self.screen_rect_vertices) self.screen_rect_vertices->Release();
+	if (self.screen_rect_vertex_shader) self.screen_rect_vertex_shader->Release();
+	if (self.screen_rect_pixel_shader) self.screen_rect_pixel_shader->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
 	self.factory->Release();
-	if (self.swapchain) self.swapchain->Release();
-	if (self.screen_rect_vertices) self.screen_rect_vertices->Release();
 }
 
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -270,6 +376,8 @@ int main(int argc, char** argv)
 
 	renderer.swapchain = renderer_create_swapchain(renderer, window);
 	renderer.screen_rect_vertices = renderer_create_vertex_buffer(renderer, RECT_VERTICES, sizeof(RECT_VERTICES));
+	renderer.screen_rect_vertex_shader = renderer_create_vertex_shader(renderer, RECT_VERTEX_SHADER);
+	renderer.screen_rect_pixel_shader = renderer_create_pixel_shader(renderer, RECT_PIXEL_SHADER);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
