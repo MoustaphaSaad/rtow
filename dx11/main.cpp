@@ -9,6 +9,78 @@
 #define NOMINMAX
 #include <Windows.h>
 
+struct Renderer
+{
+	IDXGIFactory* factory;
+	IDXGIAdapter* adapter;
+	ID3D11Device* device;
+	ID3D11DeviceContext* context;
+};
+
+Renderer renderer_new()
+{
+	Renderer self{};
+
+	const D3D_FEATURE_LEVEL feature_levels[] = {
+		D3D_FEATURE_LEVEL_11_1,
+	};
+
+	UINT creation_flags = 0;
+	#if defined(_DEBUG)
+		creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
+	#endif
+
+	auto res = D3D11CreateDevice(
+		nullptr,
+		D3D_DRIVER_TYPE_HARDWARE,
+		nullptr,
+		creation_flags,
+		feature_levels,
+		ARRAYSIZE(feature_levels),
+		D3D11_SDK_VERSION,
+		&self.device,
+		nullptr,
+		&self.context
+	);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create device");
+		exit(EXIT_FAILURE);
+	}
+
+	IDXGIDevice* dxgi_device = nullptr;
+	res = self.device->QueryInterface(IID_PPV_ARGS(&dxgi_device));
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to get dxgi device from d3d11 device");
+		exit(EXIT_FAILURE);
+	}
+
+	res = dxgi_device->GetAdapter(&self.adapter);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to get adapter from dxgi device");
+		exit(EXIT_FAILURE);
+	}
+
+	res = self.adapter->GetParent(IID_PPV_ARGS(&self.factory));
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to get DXGIFactory from adapter");
+		exit(EXIT_FAILURE);
+	}
+
+	return self;
+}
+
+void renderer_free(Renderer& self)
+{
+	self.context->Release();
+	self.device->Release();
+	self.adapter->Release();
+	self.factory->Release();
+}
+
 const char* WINDOW_CLASS = "rtow_window_class";
 
 struct Window
@@ -19,8 +91,7 @@ struct Window
 	HDC hdc;
 };
 
-LRESULT CALLBACK
-_window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
 	{
@@ -76,7 +147,7 @@ Window create_window(int width, int height, const char* title)
 	if (self.handle == INVALID_HANDLE_VALUE)
 	{
 		fprintf(stderr, "failed to create window");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 
 	self.hdc = GetDC(self.handle);
@@ -95,6 +166,8 @@ void close_window(Window& self)
 
 int main(int argc, char** argv)
 {
+	auto renderer = renderer_new();
+
 	register_window_class(WINDOW_CLASS);
 	auto window = create_window(800, 600, "RTOW");
 
@@ -110,51 +183,6 @@ int main(int argc, char** argv)
 	}
 
 	close_window(window);
-
-	IDXGIFactory* factory = nullptr;
-	IDXGIAdapter* adapter = nullptr;
-	ID3D11Device* device = nullptr;
-	ID3D11DeviceContext* context = nullptr;
-
-	auto res = CreateDXGIFactory(IID_PPV_ARGS(&factory));
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create DXGIFactory");
-		return EXIT_FAILURE;
-	}
-
-	const D3D_FEATURE_LEVEL feature_levels[] = {
-		D3D_FEATURE_LEVEL_11_1,
-	};
-
-	UINT creation_flags = 0;
-	#if defined(_DEBUG)
-		creation_flags = D3D11_CREATE_DEVICE_DEBUG;
-	#endif
-
-	res = D3D11CreateDevice(
-		nullptr,
-		D3D_DRIVER_TYPE_HARDWARE,
-		nullptr,
-		creation_flags,
-		feature_levels,
-		2,
-		D3D11_SDK_VERSION,
-		&device,
-		nullptr,
-		&context
-	);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create device");
-		return EXIT_FAILURE;
-	}
-
-	context->Release();
-	device->Release();
-	adapter->Release();
-	factory->Release();
-
-	printf("Hello, World!\n");
+	renderer_free(renderer);
 	return 0;
 }
