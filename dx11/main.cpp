@@ -74,7 +74,25 @@ struct Renderer
 	ID3D11Buffer* screen_rect_vertices;
 	ID3D11VertexShader* screen_rect_vertex_shader;
 	ID3D11PixelShader* screen_rect_pixel_shader;
+	ID3D11DepthStencilState* screen_rect_depth_stencil_state;
 };
+
+ID3D11DepthStencilState* renderer_create_depth_stencil_state(Renderer& self)
+{
+	D3D11_DEPTH_STENCIL_DESC depth_desc{};
+	depth_desc.DepthEnable = true;
+	depth_desc.DepthEnable = true;
+	depth_desc.DepthFunc = D3D11_COMPARISON_LESS;
+	depth_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	ID3D11DepthStencilState* depth_state = nullptr;
+	auto res = self.device->CreateDepthStencilState(&depth_desc, &depth_state);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create depth stencil state");
+		exit(EXIT_FAILURE);
+	}
+	return depth_state;
+}
 
 IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
 {
@@ -288,6 +306,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_vertices) self.screen_rect_vertices->Release();
 	if (self.screen_rect_vertex_shader) self.screen_rect_vertex_shader->Release();
 	if (self.screen_rect_pixel_shader) self.screen_rect_pixel_shader->Release();
+	if (self.screen_rect_depth_stencil_state) self.screen_rect_depth_stencil_state->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
@@ -378,6 +397,7 @@ int main(int argc, char** argv)
 	renderer.screen_rect_vertices = renderer_create_vertex_buffer(renderer, RECT_VERTICES, sizeof(RECT_VERTICES));
 	renderer.screen_rect_vertex_shader = renderer_create_vertex_shader(renderer, RECT_VERTEX_SHADER);
 	renderer.screen_rect_pixel_shader = renderer_create_pixel_shader(renderer, RECT_PIXEL_SHADER);
+	renderer.screen_rect_depth_stencil_state = renderer_create_depth_stencil_state(renderer);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
