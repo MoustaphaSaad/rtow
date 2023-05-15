@@ -75,6 +75,7 @@ struct Renderer
 	ID3D11VertexShader* screen_rect_vertex_shader;
 	ID3D11PixelShader* screen_rect_pixel_shader;
 	ID3D11DepthStencilState* screen_rect_depth_stencil_state;
+	ID3D11RasterizerState* screen_rect_rasterizer_state;
 };
 
 ID3D11DepthStencilState* renderer_create_depth_stencil_state(Renderer& self)
@@ -92,6 +93,22 @@ ID3D11DepthStencilState* renderer_create_depth_stencil_state(Renderer& self)
 		exit(EXIT_FAILURE);
 	}
 	return depth_state;
+}
+
+ID3D11RasterizerState* renderer_create_rasterizer_state(Renderer& self)
+{
+	D3D11_RASTERIZER_DESC raster_desc{};
+	raster_desc.CullMode = D3D11_CULL_NONE;
+	raster_desc.FillMode = D3D11_FILL_SOLID;
+	raster_desc.FrontCounterClockwise = true;
+	ID3D11RasterizerState* raster_state = nullptr;
+	auto res = self.device->CreateRasterizerState(&raster_desc, &raster_state);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to create rasterizer state");
+		exit(EXIT_FAILURE);
+	}
+	return raster_state;
 }
 
 IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
@@ -307,6 +324,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_vertex_shader) self.screen_rect_vertex_shader->Release();
 	if (self.screen_rect_pixel_shader) self.screen_rect_pixel_shader->Release();
 	if (self.screen_rect_depth_stencil_state) self.screen_rect_depth_stencil_state->Release();
+	if (self.screen_rect_rasterizer_state) self.screen_rect_rasterizer_state->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
@@ -398,6 +416,7 @@ int main(int argc, char** argv)
 	renderer.screen_rect_vertex_shader = renderer_create_vertex_shader(renderer, RECT_VERTEX_SHADER);
 	renderer.screen_rect_pixel_shader = renderer_create_pixel_shader(renderer, RECT_PIXEL_SHADER);
 	renderer.screen_rect_depth_stencil_state = renderer_create_depth_stencil_state(renderer);
+	renderer.screen_rect_rasterizer_state = renderer_create_rasterizer_state(renderer);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
