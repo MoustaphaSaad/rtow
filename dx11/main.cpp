@@ -71,6 +71,7 @@ struct Renderer
 	ID3D11Device* device;
 	ID3D11DeviceContext* context;
 	IDXGISwapChain* swapchain;
+	ID3D11RenderTargetView* render_target_view;
 	ID3D11Buffer* screen_rect_vertices;
 	ID3D10Blob* compiled_vs_shader;
 	ID3D11VertexShader* screen_rect_vertex_shader;
@@ -82,6 +83,16 @@ struct Renderer
 
 void renderer_draw(Renderer& self)
 {
+	self.context->OMSetRenderTargets(1, &self.render_target_view, nullptr);
+	D3D11_VIEWPORT viewport{};
+	viewport.Width = 800;
+	viewport.Height = 600;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+	self.context->RSSetViewports(1, &viewport);
+
 	self.context->OMSetDepthStencilState(self.screen_rect_depth_stencil_state, 1);
 	self.context->RSSetState(self.screen_rect_rasterizer_state);
 	self.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -208,6 +219,21 @@ IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
 	if (FAILED(res))
 	{
 		fprintf(stderr, "failed to create swapchain");
+		exit(EXIT_FAILURE);
+	}
+
+	ID3D11Texture2D* color_buffer = nullptr;
+	res = swapchain->GetBuffer(0, IID_PPV_ARGS(&color_buffer));
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to get swapchain buffer");
+		exit(EXIT_FAILURE);
+	}
+
+	res = self.device->CreateRenderTargetView(color_buffer, nullptr, &self.render_target_view);
+	if (FAILED(res))
+	{
+		fprintf(stderr, "failed to get render target view");
 		exit(EXIT_FAILURE);
 	}
 
@@ -361,6 +387,7 @@ Renderer renderer_new()
 void renderer_free(Renderer& self)
 {
 	if (self.swapchain) self.swapchain->Release();
+	if (self.render_target_view) self.render_target_view->Release();
 	if (self.screen_rect_vertices) self.screen_rect_vertices->Release();
 	if (self.compiled_vs_shader) self.compiled_vs_shader->Release();
 	if (self.screen_rect_vertex_shader) self.screen_rect_vertex_shader->Release();
