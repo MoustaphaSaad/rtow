@@ -80,6 +80,23 @@ struct Renderer
 	ID3D11InputLayout* screen_rect_input_layout;
 };
 
+void renderer_draw(Renderer& self)
+{
+	self.context->OMSetDepthStencilState(self.screen_rect_depth_stencil_state, 1);
+	self.context->RSSetState(self.screen_rect_rasterizer_state);
+	self.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	self.context->VSSetShader(self.screen_rect_vertex_shader, NULL, 0);
+	self.context->PSSetShader(self.screen_rect_pixel_shader, NULL, 0);
+	self.context->IASetInputLayout(self.screen_rect_input_layout);
+
+	UINT offset = 0;
+	UINT stride = 2 * sizeof(float);
+	self.context->IASetVertexBuffers(0, 1, &self.screen_rect_vertices, &stride, &offset);
+
+	self.context->Draw(6, 0);
+	self.swapchain->Present(0, 0);
+}
+
 ID3D11InputLayout* renderer_create_input_layout(Renderer& self)
 {
 	D3D11_INPUT_ELEMENT_DESC input_layout_desc[1];
@@ -91,7 +108,6 @@ ID3D11InputLayout* renderer_create_input_layout(Renderer& self)
 		attribute.SemanticIndex = 0;
 		attribute.Format = DXGI_FORMAT_R32G32_FLOAT;
 		attribute.InputSlot = i;
-		attribute.AlignedByteOffset = 2 * sizeof(float);
 	}
 	ID3D11InputLayout* input_layout = nullptr;
 	auto res = self.device->CreateInputLayout(input_layout_desc, ARRAYSIZE(input_layout_desc), self.compiled_vs_shader->GetBufferPointer(), self.compiled_vs_shader->GetBufferSize(), &input_layout);
@@ -454,6 +470,10 @@ int main(int argc, char** argv)
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+		}
+		else
+		{
+			renderer_draw(renderer);
 		}
 	}
 
