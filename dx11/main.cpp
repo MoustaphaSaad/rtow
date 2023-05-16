@@ -66,13 +66,13 @@ void renderer_draw(Renderer& self)
 void renderer_setup_resources(Renderer& self, Window& window)
 {
 	static float RECT_VERTICES[] = {
-		-0.5, -0.5,
-		0.5,  0.5,
-		-0.5,  0.5,
+		-1.0, -1.0,
+		 1.0,  1.0,
+		-1.0,  1.0,
 
-		-0.5, -0.5,
-		0.5, -0.5,
-		0.5,  0.5
+		-1.0, -1.0,
+		 1.0, -1.0,
+		 1.0,  1.0
 	};
 
 	static const char* RECT_VERTEX_SHADER = R"SHADER(
