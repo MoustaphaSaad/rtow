@@ -38,6 +38,7 @@ struct Renderer
 	ID3D11InputLayout* screen_rect_input_layout;
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* texture_resource_view;
+	ID3D11SamplerState* texture_sampler;
 };
 
 void renderer_draw(Renderer& self)
@@ -60,6 +61,8 @@ void renderer_draw(Renderer& self)
 	self.context->VSSetShader(self.screen_rect_vertex_shader, NULL, 0);
 	self.context->PSSetShader(self.screen_rect_pixel_shader, NULL, 0);
 	self.context->IASetInputLayout(self.screen_rect_input_layout);
+	self.context->PSSetShaderResources(0, 1, &self.texture_resource_view);
+	self.context->PSSetSamplers(0, 1, &self.texture_sampler);
 
 	UINT offset = 0;
 	UINT stride = 2 * sizeof(float);
@@ -109,9 +112,13 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			float2 uv: TEXCOORD0;
 		};
 
+		Texture2D tex: register(t0);
+		SamplerState tex_sampler: register(s0);
+
 		float4 main(PS_Input input): SV_TARGET
 		{
-			return float4(input.uv, 0.25, 1);
+			return tex.Sample(tex_sampler, input.uv);
+			// return float4(input.uv, 0.25, 1);
 		}
 	)SHADER";
 
@@ -327,6 +334,23 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			fprintf(stderr, "failed to create texture shader resource view");
 			exit(EXIT_FAILURE);
 		}
+
+		D3D11_SAMPLER_DESC sampler_desc{};
+		sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.MipLODBias = 0;
+		sampler_desc.MaxAnisotropy = 1;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_LESS;
+		sampler_desc.MinLOD = 0;
+		sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+		res = self.device->CreateSamplerState(&sampler_desc, &self.texture_sampler);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create sampler state");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	self.ready = true;
@@ -400,6 +424,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_input_layout) self.screen_rect_input_layout->Release();
 	if (self.texture) self.texture->Release();
 	if (self.texture_resource_view) self.texture_resource_view->Release();
+	if (self.texture_sampler) self.texture_sampler->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
