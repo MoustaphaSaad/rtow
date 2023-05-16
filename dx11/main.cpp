@@ -36,6 +36,7 @@ struct Renderer
 	ID3D11PixelShader* screen_rect_pixel_shader;
 	ID3D11RasterizerState* screen_rect_rasterizer_state;
 	ID3D11InputLayout* screen_rect_input_layout;
+	ID3D11Texture2D* texture;
 };
 
 void renderer_draw(Renderer& self)
@@ -297,6 +298,24 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		}
 	}
 
+	// create texture
+	{
+		D3D11_TEXTURE2D_DESC texture_desc{};
+		texture_desc.ArraySize = 1;
+		texture_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		texture_desc.Width = 640;
+		texture_desc.Height = 320;
+		texture_desc.Usage = D3D11_USAGE_DEFAULT;
+		texture_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		texture_desc.SampleDesc.Count = 1;
+		auto res = self.device->CreateTexture2D(&texture_desc, nullptr, &self.texture);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create texture2d");
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	self.ready = true;
 }
 
@@ -366,6 +385,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_pixel_shader) self.screen_rect_pixel_shader->Release();
 	if (self.screen_rect_rasterizer_state) self.screen_rect_rasterizer_state->Release();
 	if (self.screen_rect_input_layout) self.screen_rect_input_layout->Release();
+	if (self.texture) self.texture->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
