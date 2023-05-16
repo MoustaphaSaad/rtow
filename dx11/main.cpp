@@ -37,6 +37,7 @@ struct Renderer
 	ID3D11RasterizerState* screen_rect_rasterizer_state;
 	ID3D11InputLayout* screen_rect_input_layout;
 	ID3D11Texture2D* texture;
+	ID3D11ShaderResourceView* texture_resource_view;
 };
 
 void renderer_draw(Renderer& self)
@@ -308,10 +309,22 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		texture_desc.Usage = D3D11_USAGE_DEFAULT;
 		texture_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		texture_desc.SampleDesc.Count = 1;
+		texture_desc.MipLevels = 1;
 		auto res = self.device->CreateTexture2D(&texture_desc, nullptr, &self.texture);
 		if (FAILED(res))
 		{
 			fprintf(stderr, "failed to create texture2d");
+			exit(EXIT_FAILURE);
+		}
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC view_desc{};
+		view_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		view_desc.Texture2D.MipLevels = texture_desc.MipLevels;
+		res = self.device->CreateShaderResourceView(self.texture, &view_desc, &self.texture_resource_view);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create texture shader resource view");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -386,6 +399,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_rasterizer_state) self.screen_rect_rasterizer_state->Release();
 	if (self.screen_rect_input_layout) self.screen_rect_input_layout->Release();
 	if (self.texture) self.texture->Release();
+	if (self.texture_resource_view) self.texture_resource_view->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
