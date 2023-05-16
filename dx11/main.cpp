@@ -11,49 +11,6 @@
 #define NOMINMAX
 #include <Windows.h>
 
-float RECT_VERTICES[] = {
-	-0.5, -0.5,
-	 0.5,  0.5,
-	-0.5,  0.5,
-
-	-0.5, -0.5,
-	 0.5, -0.5,
-	 0.5,  0.5
-};
-const char* RECT_VERTEX_SHADER = R"SHADER(
-struct VS_Input
-{
-	float2 pos: POSITION;
-};
-
-struct VS_Output
-{
-	float4 pos: SV_POSITION;
-	float2 uv: TEXCOORD0;
-};
-
-VS_Output main(VS_Input input)
-{
-	VS_Output output;
-	output.pos = float4(input.pos, 0, 1);
-	output.uv = input.pos + float2(0.5, 0.5);
-	return output;
-}
-)SHADER";
-
-const char* RECT_PIXEL_SHADER = R"SHADER(
-struct PS_Input
-{
-	float4 pos: SV_POSITION;
-	float2 uv: TEXCOORD0;
-};
-
-float4 main(PS_Input input): SV_TARGET
-{
-	return float4(1, 0, 0, 1);
-}
-)SHADER";
-
 const char* WINDOW_CLASS = "rtow_window_class";
 
 struct Window
@@ -76,7 +33,6 @@ struct Renderer
 	ID3D10Blob* compiled_vs_shader;
 	ID3D11VertexShader* screen_rect_vertex_shader;
 	ID3D11PixelShader* screen_rect_pixel_shader;
-	ID3D11DepthStencilState* screen_rect_depth_stencil_state;
 	ID3D11RasterizerState* screen_rect_rasterizer_state;
 	ID3D11InputLayout* screen_rect_input_layout;
 };
@@ -93,7 +49,6 @@ void renderer_draw(Renderer& self)
 	viewport.TopLeftY = 0.0f;
 	self.context->RSSetViewports(1, &viewport);
 
-	self.context->OMSetDepthStencilState(self.screen_rect_depth_stencil_state, 1);
 	self.context->RSSetState(self.screen_rect_rasterizer_state);
 	self.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	self.context->VSSetShader(self.screen_rect_vertex_shader, NULL, 0);
@@ -108,224 +63,235 @@ void renderer_draw(Renderer& self)
 	self.swapchain->Present(0, 0);
 }
 
-ID3D11InputLayout* renderer_create_input_layout(Renderer& self)
+void renderer_setup_resources(Renderer& self, Window& window)
 {
-	D3D11_INPUT_ELEMENT_DESC input_layout_desc[1];
-	::memset(input_layout_desc, 0, sizeof(input_layout_desc));
-	for (size_t i = 0; i < ARRAYSIZE(input_layout_desc); ++i)
-	{
-		auto& attribute = input_layout_desc[i];
-		attribute.SemanticName = "POSITION";
-		attribute.SemanticIndex = 0;
-		attribute.Format = DXGI_FORMAT_R32G32_FLOAT;
-		attribute.InputSlot = i;
-	}
-	ID3D11InputLayout* input_layout = nullptr;
-	auto res = self.device->CreateInputLayout(input_layout_desc, ARRAYSIZE(input_layout_desc), self.compiled_vs_shader->GetBufferPointer(), self.compiled_vs_shader->GetBufferSize(), &input_layout);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create input layout");
-		exit(EXIT_FAILURE);
-	}
-	return input_layout;
-}
+	static float RECT_VERTICES[] = {
+		-0.5, -0.5,
+		0.5,  0.5,
+		-0.5,  0.5,
 
-ID3D11DepthStencilState* renderer_create_depth_stencil_state(Renderer& self)
-{
-	D3D11_DEPTH_STENCIL_DESC depth_desc{};
-	depth_desc.DepthEnable = true;
-	depth_desc.DepthEnable = true;
-	depth_desc.DepthFunc = D3D11_COMPARISON_LESS;
-	depth_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	ID3D11DepthStencilState* depth_state = nullptr;
-	auto res = self.device->CreateDepthStencilState(&depth_desc, &depth_state);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create depth stencil state");
-		exit(EXIT_FAILURE);
-	}
-	return depth_state;
-}
+		-0.5, -0.5,
+		0.5, -0.5,
+		0.5,  0.5
+	};
 
-ID3D11RasterizerState* renderer_create_rasterizer_state(Renderer& self)
-{
-	D3D11_RASTERIZER_DESC raster_desc{};
-	raster_desc.CullMode = D3D11_CULL_NONE;
-	raster_desc.FillMode = D3D11_FILL_SOLID;
-	raster_desc.FrontCounterClockwise = true;
-	ID3D11RasterizerState* raster_state = nullptr;
-	auto res = self.device->CreateRasterizerState(&raster_desc, &raster_state);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create rasterizer state");
-		exit(EXIT_FAILURE);
-	}
-	return raster_state;
-}
-
-IDXGISwapChain* renderer_create_swapchain(Renderer& self, Window& window)
-{
-	DXGI_SWAP_CHAIN_DESC desc{};
-	ZeroMemory(&desc, sizeof(desc));
-	desc.BufferCount = 1;
-	desc.BufferDesc.Width = window.width;
-	desc.BufferDesc.Height = window.height;
-	desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	IDXGIOutput* output = nullptr;
-	auto res = self.adapter->EnumOutputs(0, &output);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to enum output of DXGIAdapter");
-		exit(EXIT_FAILURE);
-	}
-
-	UINT modes_count = 0;
-	res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, NULL);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to enum available modes for this DXGIOutput");
-		exit(EXIT_FAILURE);
-	}
-
-	std::vector<DXGI_MODE_DESC> modes{modes_count};
-	res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, modes.data());
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to enum available modes for this DXGIOutput");
-		exit(EXIT_FAILURE);
-	}
-	output->Release();
-
-	for (const auto& mode: modes)
-	{
-		if (mode.Width == desc.BufferDesc.Width && mode.Height == desc.BufferDesc.Height)
+	static const char* RECT_VERTEX_SHADER = R"SHADER(
+		struct VS_Input
 		{
-			desc.BufferDesc.RefreshRate = mode.RefreshRate;
+			float2 pos: POSITION;
+		};
+
+		struct VS_Output
+		{
+			float4 pos: SV_POSITION;
+			float2 uv: TEXCOORD0;
+		};
+
+		VS_Output main(VS_Input input)
+		{
+			VS_Output output;
+			output.pos = float4(input.pos, 0, 1);
+			output.uv = input.pos + float2(0.5, 0.5);
+			return output;
+		}
+	)SHADER";
+
+	static const char* RECT_PIXEL_SHADER = R"SHADER(
+		struct PS_Input
+		{
+			float4 pos: SV_POSITION;
+			float2 uv: TEXCOORD0;
+		};
+
+		float4 main(PS_Input input): SV_TARGET
+		{
+			return float4(1, 0, 0, 1);
+		}
+	)SHADER";
+
+	// setup screen rect vertex buffer;
+	{
+		D3D11_BUFFER_DESC desc{};
+		desc.ByteWidth = sizeof(RECT_VERTICES);
+		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER,
+		desc.Usage = D3D11_USAGE_IMMUTABLE;
+		D3D11_SUBRESOURCE_DATA data_desc{};
+		data_desc.pSysMem = RECT_VERTICES;
+
+		auto res = self.device->CreateBuffer(&desc, &data_desc, &self.screen_rect_vertices);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create buffer");
+			exit(EXIT_FAILURE);
 		}
 	}
 
-	desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	desc.OutputWindow = window.handle;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Windowed = TRUE;
-	desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-	IDXGISwapChain* swapchain = nullptr;
-	res = self.factory->CreateSwapChain(self.device, &desc, &swapchain);
-	if (FAILED(res))
+	// vertex shader compilation
 	{
-		fprintf(stderr, "failed to create swapchain");
-		exit(EXIT_FAILURE);
+		ID3D10Blob* error = nullptr;
+		UINT compile_flags = 0;
+		#if defined(_DEBUG)
+			compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+		#endif
+
+		auto res = D3DCompile(RECT_VERTEX_SHADER, strlen(RECT_VERTEX_SHADER), NULL, NULL, NULL, "main", "vs_5_0", compile_flags, 0, &self.compiled_vs_shader, &error);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
+			exit(EXIT_FAILURE);
+		}
+
+		res = self.device->CreateVertexShader(
+			self.compiled_vs_shader->GetBufferPointer(),
+			self.compiled_vs_shader->GetBufferSize(),
+			NULL,
+			&self.screen_rect_vertex_shader
+		);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create vertex shader\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
-	ID3D11Texture2D* color_buffer = nullptr;
-	res = swapchain->GetBuffer(0, IID_PPV_ARGS(&color_buffer));
-	if (FAILED(res))
+	// pixel shader compilation
 	{
-		fprintf(stderr, "failed to get swapchain buffer");
-		exit(EXIT_FAILURE);
+		ID3D10Blob* error = nullptr;
+		UINT compile_flags = 0;
+		#if defined(_DEBUG)
+			compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+		#endif
+
+		ID3D10Blob* shader_blob;
+		auto res = D3DCompile(RECT_PIXEL_SHADER, strlen(RECT_PIXEL_SHADER), NULL, NULL, NULL, "main", "ps_5_0", compile_flags, 0, &shader_blob, &error);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
+			exit(EXIT_FAILURE);
+		}
+
+		res = self.device->CreatePixelShader(
+			shader_blob->GetBufferPointer(),
+			shader_blob->GetBufferSize(),
+			NULL,
+			&self.screen_rect_pixel_shader
+		);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create pixel shader\n");
+			exit(EXIT_FAILURE);
+		}
+
+		shader_blob->Release();
 	}
 
-	res = self.device->CreateRenderTargetView(color_buffer, nullptr, &self.render_target_view);
-	if (FAILED(res))
+	// create input layout
 	{
-		fprintf(stderr, "failed to get render target view");
-		exit(EXIT_FAILURE);
+		D3D11_INPUT_ELEMENT_DESC input_layout_desc[1];
+		::memset(input_layout_desc, 0, sizeof(input_layout_desc));
+		for (size_t i = 0; i < ARRAYSIZE(input_layout_desc); ++i)
+		{
+			auto& attribute = input_layout_desc[i];
+			attribute.SemanticName = "POSITION";
+			attribute.SemanticIndex = 0;
+			attribute.Format = DXGI_FORMAT_R32G32_FLOAT;
+			attribute.InputSlot = i;
+		}
+		auto res = self.device->CreateInputLayout(input_layout_desc, ARRAYSIZE(input_layout_desc), self.compiled_vs_shader->GetBufferPointer(), self.compiled_vs_shader->GetBufferSize(), &self.screen_rect_input_layout);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create input layout");
+			exit(EXIT_FAILURE);
+		}
 	}
 
-	return swapchain;
-}
-
-ID3D11Buffer* renderer_create_vertex_buffer(Renderer& self, void* ptr, size_t size)
-{
-	D3D11_BUFFER_DESC desc{};
-	desc.ByteWidth = size;
-	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER,
-	desc.Usage = D3D11_USAGE_IMMUTABLE;
-	D3D11_SUBRESOURCE_DATA data_desc{};
-	data_desc.pSysMem = ptr;
-
-	ID3D11Buffer* buffer;
-	auto res = self.device->CreateBuffer(&desc, &data_desc, &buffer);
-	if (FAILED(res))
+	// create rasterizer state
 	{
-		fprintf(stderr, "failed to create buffer");
-		exit(EXIT_FAILURE);
+		D3D11_RASTERIZER_DESC raster_desc{};
+		raster_desc.CullMode = D3D11_CULL_NONE;
+		raster_desc.FillMode = D3D11_FILL_SOLID;
+		raster_desc.FrontCounterClockwise = true;
+		auto res = self.device->CreateRasterizerState(&raster_desc, &self.screen_rect_rasterizer_state);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create rasterizer state");
+			exit(EXIT_FAILURE);
+		}
 	}
 
-	return buffer;
-}
-
-ID3D11VertexShader* renderer_create_vertex_shader(Renderer& self, const char* code)
-{
-	ID3D10Blob* error = nullptr;
-	UINT compile_flags = 0;
-	#if defined(_DEBUG)
-		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-	#endif
-
-	ID3D10Blob* shader_blob;
-	auto res = D3DCompile(code, strlen(code), NULL, NULL, NULL, "main", "vs_5_0", compile_flags, 0, &shader_blob, &error);
-	if (FAILED(res))
+	// create swapchain
 	{
-		fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
-		exit(EXIT_FAILURE);
+		DXGI_SWAP_CHAIN_DESC desc{};
+		ZeroMemory(&desc, sizeof(desc));
+		desc.BufferCount = 1;
+		desc.BufferDesc.Width = window.width;
+		desc.BufferDesc.Height = window.height;
+		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		IDXGIOutput* output = nullptr;
+		auto res = self.adapter->EnumOutputs(0, &output);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to enum output of DXGIAdapter");
+			exit(EXIT_FAILURE);
+		}
+
+		UINT modes_count = 0;
+		res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, NULL);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to enum available modes for this DXGIOutput");
+			exit(EXIT_FAILURE);
+		}
+
+		std::vector<DXGI_MODE_DESC> modes{modes_count};
+		res = output->GetDisplayModeList(desc.BufferDesc.Format, DXGI_ENUM_MODES_INTERLACED, &modes_count, modes.data());
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to enum available modes for this DXGIOutput");
+			exit(EXIT_FAILURE);
+		}
+		output->Release();
+
+		for (const auto& mode: modes)
+		{
+			if (mode.Width == desc.BufferDesc.Width && mode.Height == desc.BufferDesc.Height)
+			{
+				desc.BufferDesc.RefreshRate = mode.RefreshRate;
+			}
+		}
+
+		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		desc.OutputWindow = window.handle;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Windowed = TRUE;
+		desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+		res = self.factory->CreateSwapChain(self.device, &desc, &self.swapchain);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create swapchain");
+			exit(EXIT_FAILURE);
+		}
+
+		ID3D11Texture2D* color_buffer = nullptr;
+		res = self.swapchain->GetBuffer(0, IID_PPV_ARGS(&color_buffer));
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to get swapchain buffer");
+			exit(EXIT_FAILURE);
+		}
+
+		res = self.device->CreateRenderTargetView(color_buffer, nullptr, &self.render_target_view);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to get render target view");
+			exit(EXIT_FAILURE);
+		}
 	}
-
-	ID3D11VertexShader* vertex_shader = nullptr;
-	res = self.device->CreateVertexShader(
-		shader_blob->GetBufferPointer(),
-		shader_blob->GetBufferSize(),
-		NULL,
-		&vertex_shader
-	);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create vertex shader\n");
-		exit(EXIT_FAILURE);
-	}
-
-	self.compiled_vs_shader = shader_blob;
-
-	return vertex_shader;
-}
-
-ID3D11PixelShader* renderer_create_pixel_shader(Renderer& self, const char* code)
-{
-	ID3D10Blob* error = nullptr;
-	UINT compile_flags = 0;
-	#if defined(_DEBUG)
-		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-	#endif
-
-	ID3D10Blob* shader_blob;
-	auto res = D3DCompile(code, strlen(code), NULL, NULL, NULL, "main", "ps_5_0", compile_flags, 0, &shader_blob, &error);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
-		exit(EXIT_FAILURE);
-	}
-
-	ID3D11PixelShader* pixel_shader = nullptr;
-	res = self.device->CreatePixelShader(
-		shader_blob->GetBufferPointer(),
-		shader_blob->GetBufferSize(),
-		NULL,
-		&pixel_shader
-	);
-	if (FAILED(res))
-	{
-		fprintf(stderr, "failed to create pixel shader\n");
-		exit(EXIT_FAILURE);
-	}
-
-	shader_blob->Release();
-
-	return pixel_shader;
 }
 
 Renderer renderer_new()
@@ -392,7 +358,6 @@ void renderer_free(Renderer& self)
 	if (self.compiled_vs_shader) self.compiled_vs_shader->Release();
 	if (self.screen_rect_vertex_shader) self.screen_rect_vertex_shader->Release();
 	if (self.screen_rect_pixel_shader) self.screen_rect_pixel_shader->Release();
-	if (self.screen_rect_depth_stencil_state) self.screen_rect_depth_stencil_state->Release();
 	if (self.screen_rect_rasterizer_state) self.screen_rect_rasterizer_state->Release();
 	if (self.screen_rect_input_layout) self.screen_rect_input_layout->Release();
 	self.context->Release();
@@ -481,13 +446,7 @@ int main(int argc, char** argv)
 	window_register_class(WINDOW_CLASS);
 	auto window = window_new(800, 600, "RTOW");
 
-	renderer.swapchain = renderer_create_swapchain(renderer, window);
-	renderer.screen_rect_vertices = renderer_create_vertex_buffer(renderer, RECT_VERTICES, sizeof(RECT_VERTICES));
-	renderer.screen_rect_vertex_shader = renderer_create_vertex_shader(renderer, RECT_VERTEX_SHADER);
-	renderer.screen_rect_pixel_shader = renderer_create_pixel_shader(renderer, RECT_PIXEL_SHADER);
-	renderer.screen_rect_depth_stencil_state = renderer_create_depth_stencil_state(renderer);
-	renderer.screen_rect_rasterizer_state = renderer_create_rasterizer_state(renderer);
-	renderer.screen_rect_input_layout = renderer_create_input_layout(renderer);
+	renderer_setup_resources(renderer, window);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
