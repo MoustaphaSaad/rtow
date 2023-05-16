@@ -23,6 +23,7 @@ struct Window
 
 struct Renderer
 {
+	bool ready;
 	IDXGIFactory* factory;
 	IDXGIAdapter* adapter;
 	ID3D11Device* device;
@@ -39,6 +40,9 @@ struct Renderer
 
 void renderer_draw(Renderer& self)
 {
+	if (self.ready == false)
+		return;
+
 	self.context->OMSetRenderTargets(1, &self.render_target_view, nullptr);
 	D3D11_VIEWPORT viewport{};
 	viewport.Width = 800;
@@ -292,6 +296,8 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	self.ready = true;
 }
 
 Renderer renderer_new()
@@ -366,10 +372,16 @@ void renderer_free(Renderer& self)
 	self.factory->Release();
 }
 
+// Note: a global so that we can call it from the callback, I'm lazy
+Renderer renderer;
+
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
 	{
+	case WM_SIZE:
+		renderer_draw(renderer);
+		break;
 	case WM_CLOSE:
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -441,7 +453,7 @@ void window_free(Window& self)
 
 int main(int argc, char** argv)
 {
-	auto renderer = renderer_new();
+	renderer = renderer_new();
 
 	window_register_class(WINDOW_CLASS);
 	auto window = window_new(800, 600, "RTOW");
