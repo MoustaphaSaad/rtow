@@ -105,7 +105,7 @@ void renderer_setup_resources(Renderer& self, Window& window)
 
 		float4 main(PS_Input input): SV_TARGET
 		{
-			return float4(1, 0, 0, 1);
+			return float4(input.uv, 0.25, 1);
 		}
 	)SHADER";
 
