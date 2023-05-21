@@ -121,7 +121,7 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		{
 			VS_Output output;
 			output.pos = float4(input.pos, 0, 1);
-			output.uv = input.pos + float2(0.5, 0.5);
+			output.uv = (input.pos + float2(1, 1)) / float2(2, 2);
 			return output;
 		}
 	)SHADER";
@@ -146,10 +146,19 @@ void renderer_setup_resources(Renderer& self, Window& window)
 	static const char* RAYTRACE_COMPUTE_SHADER = R"SHADER(
 		RWTexture2D<float4> output: register(u0);
 
+		float2 textureSize(RWTexture2D<float4> tex)
+		{
+			uint width, height;
+			tex.GetDimensions(width, height);
+			return float2(width, height);
+		}
+
 		[numthreads(16, 16, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
-			output[DTid.xy] = float4(1, 0, 0, 1);
+			float2 size = textureSize(output);
+			float2 normalized_index = float2(DTid.xy) / size;
+			output[DTid.xy] = float4(normalized_index.x, normalized_index.y, 0.25, 1);
 		}
 	)SHADER";
 
@@ -555,7 +564,7 @@ Window window_new(int width, int height, const char* title)
 		NULL,
 		WINDOW_CLASS,
 		self.title,
-		WS_OVERLAPPEDWINDOW,
+		WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
 		100,
 		100,
 		wr.right - wr.left,
