@@ -39,6 +39,7 @@ struct Renderer
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* texture_resource_view;
 	ID3D11SamplerState* texture_sampler;
+	ID3D11ComputeShader* raytrace_compute_shader;
 };
 
 void renderer_draw(Renderer& self)
@@ -119,6 +120,21 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		{
 			return tex.Sample(tex_sampler, input.uv);
 			// return float4(input.uv, 0.25, 1);
+		}
+	)SHADER";
+
+	static const char* RAYTRACE_COMPUTE_SHADER = R"SHADER(
+		struct Number
+		{
+			int value;
+		};
+
+		RWStructuredBuffer<Number> Numbers: register(u0);
+
+		[numthreads(10, 1, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			Numbers[DTid.x].value += 1;
 		}
 	)SHADER";
 
@@ -353,6 +369,37 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		}
 	}
 
+	// create raytracy shader
+	{
+		ID3D10Blob* error = nullptr;
+		UINT compile_flags = 0;
+		#if defined(_DEBUG)
+			compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+		#endif
+
+		ID3D10Blob* shader_blob;
+		auto res = D3DCompile(RAYTRACE_COMPUTE_SHADER, strlen(RAYTRACE_COMPUTE_SHADER), NULL, NULL, NULL, "main", "cs_5_0", compile_flags, 0, &shader_blob, &error);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to compile shader, %s\n", (char*)error->GetBufferPointer());
+			exit(EXIT_FAILURE);
+		}
+
+		res = self.device->CreateComputeShader(
+			shader_blob->GetBufferPointer(),
+			shader_blob->GetBufferSize(),
+			NULL,
+			&self.raytrace_compute_shader
+		);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create compute shader\n");
+			exit(EXIT_FAILURE);
+		}
+
+		shader_blob->Release();
+	}
+
 	self.ready = true;
 }
 
@@ -425,6 +472,7 @@ void renderer_free(Renderer& self)
 	if (self.texture) self.texture->Release();
 	if (self.texture_resource_view) self.texture_resource_view->Release();
 	if (self.texture_sampler) self.texture_sampler->Release();
+	if (self.raytrace_compute_shader) self.raytrace_compute_shader->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
