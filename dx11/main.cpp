@@ -13,6 +13,9 @@
 
 const char* WINDOW_CLASS = "rtow_window_class";
 
+constexpr int WINDOW_DEFAULT_WIDTH = 1024;
+constexpr int WINDOW_DEFAULT_HEIGHT = WINDOW_DEFAULT_WIDTH / (16.0 / 9.0);
+
 struct Window
 {
 	int width, height;
@@ -38,6 +41,7 @@ struct Renderer
 	ID3D11InputLayout* screen_rect_input_layout;
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* texture_resource_view;
+	ID3D11UnorderedAccessView* texture_unordered_view;
 	ID3D11SamplerState* texture_sampler;
 	ID3D11ComputeShader* raytrace_compute_shader;
 };
@@ -47,10 +51,22 @@ void renderer_draw(Renderer& self)
 	if (self.ready == false)
 		return;
 
+	self.context->CSSetShader(self.raytrace_compute_shader, NULL, 0);
+	self.context->CSSetUnorderedAccessViews(0, 1, &self.texture_unordered_view, nullptr);
+	D3D11_TEXTURE2D_DESC texture_desc{};
+	self.texture->GetDesc(&texture_desc);
+	// 1 + ((total_size.x - 1) / tile_size.x)
+	UINT x = ((texture_desc.Width - 1) / 16) + 1;
+	UINT y = ((texture_desc.Height - 1) / 16) + 1;
+	self.context->Dispatch(x, y, 1);
+
+	ID3D11UnorderedAccessView* unbind_uavs[] = {nullptr};
+	self.context->CSSetUnorderedAccessViews(0, 1, unbind_uavs, nullptr);
+
 	self.context->OMSetRenderTargets(1, &self.render_target_view, nullptr);
 	D3D11_VIEWPORT viewport{};
-	viewport.Width = 800;
-	viewport.Height = 600;
+	viewport.Width = WINDOW_DEFAULT_WIDTH;
+	viewport.Height = WINDOW_DEFAULT_HEIGHT;
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
 	viewport.TopLeftX = 0.0f;
@@ -70,6 +86,10 @@ void renderer_draw(Renderer& self)
 	self.context->IASetVertexBuffers(0, 1, &self.screen_rect_vertices, &stride, &offset);
 
 	self.context->Draw(6, 0);
+
+	ID3D11ShaderResourceView* unbind_srvs[] = {nullptr};
+	self.context->PSSetShaderResources(0, 1, unbind_srvs);
+
 	self.swapchain->Present(0, 0);
 }
 
@@ -124,17 +144,12 @@ void renderer_setup_resources(Renderer& self, Window& window)
 	)SHADER";
 
 	static const char* RAYTRACE_COMPUTE_SHADER = R"SHADER(
-		struct Number
-		{
-			int value;
-		};
+		RWTexture2D<float4> output: register(u0);
 
-		RWStructuredBuffer<Number> Numbers: register(u0);
-
-		[numthreads(10, 1, 1)]
+		[numthreads(16, 16, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
-			Numbers[DTid.x].value += 1;
+			output[DTid.xy] = float4(1, 0, 0, 1);
 		}
 	)SHADER";
 
@@ -327,8 +342,8 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		D3D11_TEXTURE2D_DESC texture_desc{};
 		texture_desc.ArraySize = 1;
 		texture_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-		texture_desc.Width = 640;
-		texture_desc.Height = 320;
+		texture_desc.Width = WINDOW_DEFAULT_WIDTH;
+		texture_desc.Height = WINDOW_DEFAULT_HEIGHT;
 		texture_desc.Usage = D3D11_USAGE_DEFAULT;
 		texture_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		texture_desc.SampleDesc.Count = 1;
@@ -340,14 +355,25 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			exit(EXIT_FAILURE);
 		}
 
-		D3D11_SHADER_RESOURCE_VIEW_DESC view_desc{};
-		view_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		view_desc.Texture2D.MipLevels = texture_desc.MipLevels;
-		res = self.device->CreateShaderResourceView(self.texture, &view_desc, &self.texture_resource_view);
+		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+		srv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srv_desc.Texture2D.MipLevels = texture_desc.MipLevels;
+		res = self.device->CreateShaderResourceView(self.texture, &srv_desc, &self.texture_resource_view);
 		if (FAILED(res))
 		{
 			fprintf(stderr, "failed to create texture shader resource view");
+			exit(EXIT_FAILURE);
+		}
+
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
+		uav_desc.Format = texture_desc.Format;
+		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		uav_desc.Texture2D.MipSlice = 0;
+		res = self.device->CreateUnorderedAccessView(self.texture, &uav_desc, &self.texture_unordered_view);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create texture unordered access view");
 			exit(EXIT_FAILURE);
 		}
 
@@ -471,6 +497,7 @@ void renderer_free(Renderer& self)
 	if (self.screen_rect_input_layout) self.screen_rect_input_layout->Release();
 	if (self.texture) self.texture->Release();
 	if (self.texture_resource_view) self.texture_resource_view->Release();
+	if (self.texture_unordered_view) self.texture_unordered_view->Release();
 	if (self.texture_sampler) self.texture_sampler->Release();
 	if (self.raytrace_compute_shader) self.raytrace_compute_shader->Release();
 	self.context->Release();
@@ -563,7 +590,7 @@ int main(int argc, char** argv)
 	renderer = renderer_new();
 
 	window_register_class(WINDOW_CLASS);
-	auto window = window_new(800, 600, "RTOW");
+	auto window = window_new(WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT, "RTOW");
 
 	renderer_setup_resources(renderer, window);
 
