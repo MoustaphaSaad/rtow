@@ -146,6 +146,12 @@ void renderer_setup_resources(Renderer& self, Window& window)
 	static const char* RAYTRACE_COMPUTE_SHADER = R"SHADER(
 		RWTexture2D<float4> output: register(u0);
 
+		struct Ray
+		{
+			float3 origin;
+			float3 dir;
+		};
+
 		float2 textureSize(RWTexture2D<float4> tex)
 		{
 			uint width, height;
@@ -153,12 +159,39 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			return float2(width, height);
 		}
 
+		float3 ray_color(Ray r)
+		{
+			float3 unit_direction = normalize(r.dir);
+			float t = 0.5 * (unit_direction.y + 1.0);
+			return lerp(float3(1, 1, 1), float3(0.5, 0.7, 1.0), t);
+		}
+
 		[numthreads(16, 16, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
+			float aspect_ratio = 16.0 / 9.0;
 			float2 size = textureSize(output);
-			float2 normalized_index = float2(DTid.xy) / size;
-			output[DTid.xy] = float4(normalized_index.x, normalized_index.y, 0.25, 1);
+			float image_width = size.x;
+			float image_height = size.y;
+			float viewport_height = 2.0;
+			float viewport_width = aspect_ratio * viewport_height;
+			float focal_length = 1.0;
+
+			float3 origin = float3(0, 0, 0);
+			float3 horizontal = float3(viewport_width, 0, 0);
+			float3 vertical = float3(0, viewport_height, 0);
+			float3 lower_left_corner = origin - horizontal/2 - vertical/2 - float3(0, 0, focal_length);
+
+			float u = DTid.x / image_width - 1;
+			float v = DTid.y / image_height - 1;
+			Ray r;
+			r.origin = origin;
+			r.dir = lower_left_corner + u * horizontal + v * vertical - origin;
+			float3 color = ray_color(r);
+			output[DTid.xy] = float4(color, 1);
+
+			// float2 normalized_index = float2(DTid.xy) / size;
+			// output[DTid.xy] = float4(normalized_index.x, normalized_index.y, 0.25, 1);
 		}
 	)SHADER";
 
