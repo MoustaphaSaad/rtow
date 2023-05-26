@@ -24,6 +24,12 @@ struct Window
 	HDC hdc;
 };
 
+struct Sphere
+{
+	float origin[3];
+	float radius;
+};
+
 struct Renderer
 {
 	bool ready;
@@ -44,6 +50,8 @@ struct Renderer
 	ID3D11UnorderedAccessView* texture_unordered_view;
 	ID3D11SamplerState* texture_sampler;
 	ID3D11ComputeShader* raytrace_compute_shader;
+	ID3D11Buffer* raytrace_spheres_buffer;
+	ID3D11ShaderResourceView* raytrace_spheres_buffer_resource_view;
 };
 
 void renderer_draw(Renderer& self)
@@ -79,6 +87,7 @@ void renderer_draw(Renderer& self)
 	self.context->PSSetShader(self.screen_rect_pixel_shader, NULL, 0);
 	self.context->IASetInputLayout(self.screen_rect_input_layout);
 	self.context->PSSetShaderResources(0, 1, &self.texture_resource_view);
+	self.context->PSSetShaderResources(1, 1, &self.raytrace_spheres_buffer_resource_view);
 	self.context->PSSetSamplers(0, 1, &self.texture_sampler);
 
 	UINT offset = 0;
@@ -152,6 +161,14 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			float3 dir;
 		};
 
+		struct Sphere
+		{
+			float3 center;
+			float radius;
+		};
+
+		StructuredBuffer<Sphere> spheres: register(t1);
+
 		float2 textureSize(RWTexture2D<float4> tex)
 		{
 			uint width, height;
@@ -167,7 +184,7 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		}
 
 		[numthreads(16, 16, 1)]
-		void main(uint3 DTid : SV_DispatchThreadID)
+		void main(uint3 DTid: SV_DispatchThreadID)
 		{
 			float aspect_ratio = 16.0 / 9.0;
 			float2 size = textureSize(output);
@@ -468,6 +485,39 @@ void renderer_setup_resources(Renderer& self, Window& window)
 		shader_blob->Release();
 	}
 
+	// create sphere buffer
+	{
+		std::vector<Sphere> spheres{};
+		spheres.resize(10, Sphere{});
+
+		D3D11_BUFFER_DESC buffer_desc{};
+		buffer_desc.ByteWidth = spheres.size() * sizeof(Sphere);
+		buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		buffer_desc.Usage = D3D11_USAGE_IMMUTABLE;
+		buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		buffer_desc.StructureByteStride = sizeof(Sphere);
+
+		D3D11_SUBRESOURCE_DATA data_desc{};
+		data_desc.pSysMem = spheres.data();
+		auto res = self.device->CreateBuffer(&buffer_desc, &data_desc, &self.raytrace_spheres_buffer);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create structured buffer");
+			exit(EXIT_FAILURE);
+		}
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+		srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		srv_desc.BufferEx.NumElements = buffer_desc.ByteWidth / buffer_desc.StructureByteStride;
+		res = self.device->CreateShaderResourceView(self.raytrace_spheres_buffer, &srv_desc, &self.raytrace_spheres_buffer_resource_view);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create spheres buffer shader resource view");
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	self.ready = true;
 }
 
@@ -542,6 +592,8 @@ void renderer_free(Renderer& self)
 	if (self.texture_unordered_view) self.texture_unordered_view->Release();
 	if (self.texture_sampler) self.texture_sampler->Release();
 	if (self.raytrace_compute_shader) self.raytrace_compute_shader->Release();
+	if (self.raytrace_spheres_buffer) self.raytrace_spheres_buffer->Release();
+	if (self.raytrace_spheres_buffer_resource_view) self.raytrace_spheres_buffer_resource_view->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
