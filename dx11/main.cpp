@@ -28,6 +28,14 @@ struct Sphere
 {
 	float origin[3];
 	float radius;
+
+	Sphere(float x, float y, float z, float r)
+	{
+		origin[0] = x;
+		origin[1] = y;
+		origin[2] = z;
+		radius = r;
+	}
 };
 
 struct Renderer
@@ -61,6 +69,7 @@ void renderer_draw(Renderer& self)
 
 	self.context->CSSetShader(self.raytrace_compute_shader, NULL, 0);
 	self.context->CSSetUnorderedAccessViews(0, 1, &self.texture_unordered_view, nullptr);
+	self.context->CSSetShaderResources(1, 1, &self.raytrace_spheres_buffer_resource_view);
 	D3D11_TEXTURE2D_DESC texture_desc{};
 	self.texture->GetDesc(&texture_desc);
 	// 1 + ((total_size.x - 1) / tile_size.x)
@@ -70,6 +79,9 @@ void renderer_draw(Renderer& self)
 
 	ID3D11UnorderedAccessView* unbind_uavs[] = {nullptr};
 	self.context->CSSetUnorderedAccessViews(0, 1, unbind_uavs, nullptr);
+
+	ID3D11ShaderResourceView* unbind_srvs[] = {nullptr};
+	self.context->CSSetShaderResources(1, 1, unbind_srvs);
 
 	self.context->OMSetRenderTargets(1, &self.render_target_view, nullptr);
 	D3D11_VIEWPORT viewport{};
@@ -87,7 +99,6 @@ void renderer_draw(Renderer& self)
 	self.context->PSSetShader(self.screen_rect_pixel_shader, NULL, 0);
 	self.context->IASetInputLayout(self.screen_rect_input_layout);
 	self.context->PSSetShaderResources(0, 1, &self.texture_resource_view);
-	self.context->PSSetShaderResources(1, 1, &self.raytrace_spheres_buffer_resource_view);
 	self.context->PSSetSamplers(0, 1, &self.texture_sampler);
 
 	UINT offset = 0;
@@ -96,10 +107,45 @@ void renderer_draw(Renderer& self)
 
 	self.context->Draw(6, 0);
 
-	ID3D11ShaderResourceView* unbind_srvs[] = {nullptr};
 	self.context->PSSetShaderResources(0, 1, unbind_srvs);
 
 	self.swapchain->Present(0, 0);
+}
+
+inline uint32_t xor_shift_32_rand()
+{
+	static uint32_t state = 42;
+	uint32_t x = state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 15;
+	state = x;
+	return x;
+}
+
+float random_double()
+{
+	return xor_shift_32_rand() / float(UINT32_MAX);
+}
+
+std::vector<Sphere> random_scene()
+{
+	std::vector<Sphere> world;
+	// world.push_back(Sphere{0, -1000, 0, 1000});
+
+	for (int a = -11; a < 11; ++a)
+	{
+		for (int b = -11; b < 11; ++b)
+		{
+			world.push_back(Sphere{a + 0.9f * random_double(), 0.2f, b + 0.9f * random_double(), 0.2f});
+		}
+	}
+
+	world.push_back(Sphere{0, 1, 0, 1});
+	world.push_back(Sphere{-4, 1, 0, 1});
+	world.push_back(Sphere{4, 1, 0, 1});
+
+	return world;
 }
 
 void renderer_setup_resources(Renderer& self, Window& window)
@@ -153,63 +199,233 @@ void renderer_setup_resources(Renderer& self, Window& window)
 	)SHADER";
 
 	static const char* RAYTRACE_COMPUTE_SHADER = R"SHADER(
-		RWTexture2D<float4> output: register(u0);
+struct Ray
+{
+	float3 origin;
+	float3 dir;
+};
 
-		struct Ray
+struct Sphere
+{
+	float3 center;
+	float radius;
+};
+
+struct Hit_Record
+{
+	float3 p;
+	float3 normal;
+	int mat_index;
+	float t;
+	bool front_face;
+};
+
+struct Camera
+{
+	float3 origin;
+	float3 lower_left_corner;
+	float3 horizontal;
+	float3 vertical;
+	float3 u, v, w;
+	float lens_radius;
+};
+
+struct Random_Series
+{
+	uint state;
+};
+
+RWTexture2D<float4> output: register(u0);
+
+StructuredBuffer<Sphere> spheres: register(t1);
+
+static const float pi = 3.1415926535897932385;
+
+inline uint xor_shift_32_rand(inout uint state)
+{
+	uint x = state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 15;
+	state = x;
+	return x;
+}
+
+float random_double(inout uint series)
+{
+	return (xor_shift_32_rand(series) & 0xFFFFFF) / 16777216.0f;
+}
+
+float random_double_in_range(inout uint series, float min, float max)
+{
+	return min + (max - min) * random_double(series);
+}
+
+float3 random_in_unit_disk(inout uint series)
+{
+	float a = random_double(series) * 2.0 * pi;
+	float2 xy = float2(cos(a), sin(a));
+	xy *= sqrt(random_double(series));
+	return float3(xy, 0);
+}
+
+float degrees_to_radians(float degrees)
+{
+	return degrees * pi / 180.0;
+}
+
+float3 unit_vector(float3 v)
+{
+	return normalize(v);
+}
+
+Camera camera_new(float3 lookfrom, float3 lookat, float3 vup, float vertical_fov_degrees, float aspect_ratio, float aperture, float focus_dist)
+{
+	float theta = degrees_to_radians(vertical_fov_degrees);
+	float h = tan(theta / 2);
+	float viewport_height = 2.0 * h;
+	float viewport_width = aspect_ratio * viewport_height;
+
+	Camera cam;
+	cam.w = unit_vector(lookfrom - lookat);
+	cam.u = unit_vector(cross(vup, cam.w));
+	cam.v = cross(cam.w, cam.u);
+
+	cam.origin = lookfrom;
+	cam.horizontal = focus_dist * viewport_width * cam.u;
+	cam.vertical = focus_dist * viewport_height * cam.v;
+	cam.lower_left_corner = cam.origin - cam.horizontal / 2 - cam.vertical / 2 - focus_dist * cam.w;
+	cam.lens_radius = aperture / 2;
+	return cam;
+}
+
+Ray camera_get_ray(Camera cam, inout uint series, float s, float t)
+{
+	float3 rd = cam.lens_radius * random_in_unit_disk(series);
+	float offset = cam.u * rd.x + cam.v * rd.y;
+
+	Ray ray;
+	ray.origin = cam.origin + offset;
+	ray.dir = cam.lower_left_corner + s * cam.horizontal + t * cam.vertical - cam.origin - offset;
+	return ray;
+}
+
+float2 texture_size(RWTexture2D<float4> tex)
+{
+	uint width, height;
+	tex.GetDimensions(width, height);
+	return float2(width, height);
+}
+
+float length_squared(float3 v)
+{
+	return dot(v, v);
+}
+
+float3 ray_at(Ray r, float t)
+{
+	return r.origin + t * r.dir;
+}
+
+bool sphere_hit(Sphere sphere, Ray r, float t_min, float t_max, out Hit_Record rec)
+{
+	float a = length_squared(r.dir);
+	float3 oc = r.origin - sphere.center;
+	float half_b = dot(r.dir, oc);
+	float c = length_squared(oc) - sphere.radius * sphere.radius;
+
+	float discriminant = half_b * half_b - a * c;
+	if (discriminant < 0) return false;
+	float sqrtd = sqrt(discriminant);
+
+	// find the nearest of 2 possible solutions
+	float root = (-half_b - sqrtd) / a;
+	if (root < t_min || root > t_max)
+	{
+		root = (-half_b + sqrtd) / a;
+		if (root < t_min || root > t_max)
+			return false;
+	}
+
+	rec.t = root;
+	rec.p = ray_at(r, rec.t);
+	float3 outward_normal = (rec.p - sphere.center) / sphere.radius;
+	rec.front_face = dot(r.dir, outward_normal) < 0;
+	rec.normal = rec.front_face ? outward_normal : -outward_normal;
+	rec.mat_index = 0;
+	return true;
+}
+
+bool world_hit(Ray r, float t_min, float t_max, inout Hit_Record rec, uint spheres_count)
+{
+	Hit_Record temp_rec;
+	bool hit_anything = false;
+	float closest_so_far = t_max;
+
+	for (uint i = 0; i < spheres_count; ++i)
+	{
+		if (sphere_hit(spheres[i], r, t_min, closest_so_far, temp_rec))
 		{
-			float3 origin;
-			float3 dir;
-		};
-
-		struct Sphere
-		{
-			float3 center;
-			float radius;
-		};
-
-		StructuredBuffer<Sphere> spheres: register(t1);
-
-		float2 textureSize(RWTexture2D<float4> tex)
-		{
-			uint width, height;
-			tex.GetDimensions(width, height);
-			return float2(width, height);
+			hit_anything = true;
+			closest_so_far = temp_rec.t;
+			rec = temp_rec;
 		}
+	}
 
-		float3 ray_color(Ray r)
-		{
-			float3 unit_direction = normalize(r.dir);
-			float t = 0.5 * (unit_direction.y + 1.0);
-			return lerp(float3(1, 1, 1), float3(0.5, 0.7, 1.0), t);
-		}
+	return hit_anything;
+}
 
-		[numthreads(16, 16, 1)]
-		void main(uint3 DTid: SV_DispatchThreadID)
-		{
-			float aspect_ratio = 16.0 / 9.0;
-			float2 size = textureSize(output);
-			float image_width = size.x;
-			float image_height = size.y;
-			float viewport_height = 2.0;
-			float viewport_width = aspect_ratio * viewport_height;
-			float focal_length = 1.0;
+float3 ray_color(Ray r, uint spheres_count)
+{
+	Hit_Record rec;
 
-			float3 origin = float3(0, 0, 0);
-			float3 horizontal = float3(viewport_width, 0, 0);
-			float3 vertical = float3(0, viewport_height, 0);
-			float3 lower_left_corner = origin - horizontal/2 - vertical/2 - float3(0, 0, focal_length);
+	if (world_hit(r, 0.001, 1.#INF, rec, spheres_count))
+	{
+		return float3(1, 0, 0);
+	}
 
-			float u = DTid.x / image_width - 1;
-			float v = DTid.y / image_height - 1;
-			Ray r;
-			r.origin = origin;
-			r.dir = lower_left_corner + u * horizontal + v * vertical - origin;
-			float3 color = ray_color(r);
-			output[DTid.xy] = float4(color, 1);
+	float3 unit_direction = normalize(r.dir);
+	float t = 0.5 * (unit_direction.y + 1.0);
+	return lerp(float3(1, 1, 1), float3(0.5, 0.7, 1.0), t);
+}
 
-			// float2 normalized_index = float2(DTid.xy) / size;
-			// output[DTid.xy] = float4(normalized_index.x, normalized_index.y, 0.25, 1);
-		}
+[numthreads(16, 16, 1)]
+void main(uint3 DTid: SV_DispatchThreadID)
+{
+	float aspect_ratio = 16.0 / 9.0;
+	float2 size = texture_size(output);
+	float image_width = size.x;
+	float image_height = size.y;
+
+	uint spheres_count = 0;
+	uint sphere_size = 0;
+	spheres.GetDimensions(spheres_count, sphere_size);
+
+	uint random_series = DTid.y * image_height + DTid.x;
+
+	float3 lookfrom = float3(13, 2, 3);
+	float3 lookat = float3(0, 0, 0);
+	float3 vup = float3(0, 1, 0);
+	float dist_to_focus = 10;
+	float aperture = 0.1;
+	Camera cam = camera_new(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+	// Camera cam = camera_new(float3(0, 2, 3), float3(0, 0, 0), float3(0, 1, 0), 60, aspect_ratio, aperture, 3);
+
+	float samples_per_pixel = 10;
+	float3 color = float3(0, 0, 0);
+	for (int i = 0; i < samples_per_pixel; ++i)
+	{
+		float u = (DTid.x + random_double(random_series)) / (image_width - 1);
+		float v = (DTid.y + random_double(random_series)) / (image_height - 1);
+		Ray ray = camera_get_ray(cam, random_series, u, v);
+		color += ray_color(ray, spheres_count);
+	}
+	float scale = 1.0 / samples_per_pixel;
+	output[DTid.xy] = float4(sqrt(color * scale), 1);
+
+	// float2 normalized_index = float2(DTid.xy) / size;
+	// output[DTid.xy] = float4(normalized_index.x, normalized_index.y, 0.25, 1);
+}
 	)SHADER";
 
 	// setup screen rect vertex buffer;
@@ -462,7 +678,7 @@ void renderer_setup_resources(Renderer& self, Window& window)
 			compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 		#endif
 
-		ID3D10Blob* shader_blob;
+		ID3D10Blob* shader_blob = nullptr;
 		auto res = D3DCompile(RAYTRACE_COMPUTE_SHADER, strlen(RAYTRACE_COMPUTE_SHADER), NULL, NULL, NULL, "main", "cs_5_0", compile_flags, 0, &shader_blob, &error);
 		if (FAILED(res))
 		{
@@ -487,8 +703,7 @@ void renderer_setup_resources(Renderer& self, Window& window)
 
 	// create sphere buffer
 	{
-		std::vector<Sphere> spheres{};
-		spheres.resize(10, Sphere{});
+		auto spheres = random_scene();
 
 		D3D11_BUFFER_DESC buffer_desc{};
 		buffer_desc.ByteWidth = spheres.size() * sizeof(Sphere);
