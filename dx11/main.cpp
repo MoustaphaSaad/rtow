@@ -28,15 +28,74 @@ struct Sphere
 {
 	float origin[3];
 	float radius;
+	int mat_index;
 
-	Sphere(float x, float y, float z, float r)
+	Sphere(float x, float y, float z, float r, int mat)
 	{
 		origin[0] = x;
 		origin[1] = y;
 		origin[2] = z;
 		radius = r;
+		mat_index = mat;
 	}
 };
+
+struct Material
+{
+	enum KIND
+	{
+		KIND_LAMBERTIAN,
+		KIND_METAL,
+		KIND_DIELECTRIC,
+	};
+
+	KIND kind;
+	float albedo[3];
+	float fuzz;
+	float ir;
+};
+
+struct World
+{
+	std::vector<Sphere> spheres;
+	std::vector<Material> materials;
+};
+
+int world_push(World& self, const Material& m)
+{
+	self.materials.push_back(m);
+	return self.materials.size() - 1;
+}
+
+Material lambertian(float r, float g, float b)
+{
+	Material self{};
+	self.kind = Material::KIND_LAMBERTIAN;
+	self.albedo[0] = r;
+	self.albedo[1] = g;
+	self.albedo[2] = b;
+	return self;
+}
+
+Material metal(float r, float g, float b, float f)
+{
+	Material self{};
+	self.kind = Material::KIND_METAL;
+	self.albedo[0] = r;
+	self.albedo[1] = r;
+	self.albedo[2] = r;
+	self.fuzz = f;
+	return self;
+}
+
+Material dielectric(float ir)
+{
+	Material self{};
+	self.kind = Material::KIND_DIELECTRIC;
+	self.ir = ir;
+	return self;
+}
+
 
 struct Renderer
 {
@@ -60,6 +119,8 @@ struct Renderer
 	ID3D11ComputeShader* raytrace_compute_shader;
 	ID3D11Buffer* raytrace_spheres_buffer;
 	ID3D11ShaderResourceView* raytrace_spheres_buffer_resource_view;
+	ID3D11Buffer* raytrace_materials_buffer;
+	ID3D11ShaderResourceView* raytrace_materials_buffer_resource_view;
 };
 
 void renderer_draw(Renderer& self)
@@ -70,6 +131,7 @@ void renderer_draw(Renderer& self)
 	self.context->CSSetShader(self.raytrace_compute_shader, NULL, 0);
 	self.context->CSSetUnorderedAccessViews(0, 1, &self.texture_unordered_view, nullptr);
 	self.context->CSSetShaderResources(1, 1, &self.raytrace_spheres_buffer_resource_view);
+	self.context->CSSetShaderResources(2, 1, &self.raytrace_materials_buffer_resource_view);
 	D3D11_TEXTURE2D_DESC texture_desc{};
 	self.texture->GetDesc(&texture_desc);
 	// 1 + ((total_size.x - 1) / tile_size.x)
@@ -82,6 +144,7 @@ void renderer_draw(Renderer& self)
 
 	ID3D11ShaderResourceView* unbind_srvs[] = {nullptr};
 	self.context->CSSetShaderResources(1, 1, unbind_srvs);
+	self.context->CSSetShaderResources(2, 1, unbind_srvs);
 
 	self.context->OMSetRenderTargets(1, &self.render_target_view, nullptr);
 	D3D11_VIEWPORT viewport{};
@@ -128,22 +191,65 @@ float random_double()
 	return xor_shift_32_rand() / float(UINT32_MAX);
 }
 
-std::vector<Sphere> random_scene()
+float random_double(float min, float max)
 {
-	std::vector<Sphere> world;
-	// world.push_back(Sphere{0, -1000, 0, 1000});
+	return min + (max - min) * random_double();
+}
+
+World random_scene()
+{
+	World world{};
+
+	auto ground_material = world_push(world, lambertian(0.5, 0.5, 0.5));
+	world.spheres.push_back(Sphere{0, -1000, 0, 1000, ground_material});
 
 	for (int a = -11; a < 11; ++a)
 	{
 		for (int b = -11; b < 11; ++b)
 		{
-			world.push_back(Sphere{a + 0.9f * random_double(), 0.2f, b + 0.9f * random_double(), 0.2f});
+			auto choose_mat = random_double();
+
+			float x = a + 0.9f * random_double();
+			float y = 0.2f;
+			float z = b + 0.9f * random_double();
+
+			auto dist_x = x - 4;
+			auto dist_y = y - 0.2;
+			auto dist_z = z - 0;
+
+			float dist = sqrt(dist_x * dist_x + dist_y * dist_y + dist_z * dist_z);
+
+			if (dist > 0.9)
+			{
+				int sphere_material;
+
+				if (choose_mat < 0.8)
+				{
+					sphere_material = world_push(world, lambertian(random_double() * random_double(), random_double() * random_double(), random_double() * random_double()));
+					world.spheres.push_back(Sphere{x, y, z, 0.2, sphere_material});
+				}
+				else if (choose_mat < 0.95)
+				{
+					sphere_material = world_push(world, metal(random_double(0.5, 1), random_double(0.5, 1), random_double(0.5, 1), random_double(0, 0.5)));
+					world.spheres.push_back(Sphere{x, y, z, 0.2, sphere_material});
+				}
+				else
+				{
+					sphere_material = world_push(world, dielectric(1.5));
+					world.spheres.push_back(Sphere{x, y, z, 0.2, sphere_material});
+				}
+			}
 		}
 	}
 
-	world.push_back(Sphere{0, 1, 0, 1});
-	world.push_back(Sphere{-4, 1, 0, 1});
-	world.push_back(Sphere{4, 1, 0, 1});
+	auto material1 = world_push(world, dielectric(1.5));
+	world.spheres.push_back(Sphere{0, 1, 0, 1, material1});
+
+	auto material2 = world_push(world, lambertian(0.4, 0.2, 0.1));
+	world.spheres.push_back(Sphere{-4, 1, 0, 1, material2});
+
+	auto material3 = world_push(world, lambertian(0.7, 0.6, 0.5));
+	world.spheres.push_back(Sphere{4, 1, 0, 1, material3});
 
 	return world;
 }
@@ -701,19 +807,20 @@ void main(uint3 DTid: SV_DispatchThreadID)
 		shader_blob->Release();
 	}
 
+
+	auto world = random_scene();
+
 	// create sphere buffer
 	{
-		auto spheres = random_scene();
-
 		D3D11_BUFFER_DESC buffer_desc{};
-		buffer_desc.ByteWidth = spheres.size() * sizeof(Sphere);
+		buffer_desc.ByteWidth = world.spheres.size() * sizeof(Sphere);
 		buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 		buffer_desc.Usage = D3D11_USAGE_IMMUTABLE;
 		buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 		buffer_desc.StructureByteStride = sizeof(Sphere);
 
 		D3D11_SUBRESOURCE_DATA data_desc{};
-		data_desc.pSysMem = spheres.data();
+		data_desc.pSysMem = world.spheres.data();
 		auto res = self.device->CreateBuffer(&buffer_desc, &data_desc, &self.raytrace_spheres_buffer);
 		if (FAILED(res))
 		{
@@ -729,6 +836,36 @@ void main(uint3 DTid: SV_DispatchThreadID)
 		if (FAILED(res))
 		{
 			fprintf(stderr, "failed to create spheres buffer shader resource view");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	// create materials buffer
+	{
+		D3D11_BUFFER_DESC buffer_desc{};
+		buffer_desc.ByteWidth = world.materials.size() * sizeof(Material);
+		buffer_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		buffer_desc.Usage = D3D11_USAGE_IMMUTABLE;
+		buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		buffer_desc.StructureByteStride = sizeof(Material);
+
+		D3D11_SUBRESOURCE_DATA data_desc{};
+		data_desc.pSysMem = world.materials.data();
+		auto res = self.device->CreateBuffer(&buffer_desc, &data_desc, &self.raytrace_materials_buffer);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create structured buffer");
+			exit(EXIT_FAILURE);
+		}
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+		srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		srv_desc.BufferEx.NumElements = buffer_desc.ByteWidth / buffer_desc.StructureByteStride;
+		res = self.device->CreateShaderResourceView(self.raytrace_materials_buffer, &srv_desc, &self.raytrace_materials_buffer_resource_view);
+		if (FAILED(res))
+		{
+			fprintf(stderr, "failed to create materials buffer shader resource view");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -809,6 +946,8 @@ void renderer_free(Renderer& self)
 	if (self.raytrace_compute_shader) self.raytrace_compute_shader->Release();
 	if (self.raytrace_spheres_buffer) self.raytrace_spheres_buffer->Release();
 	if (self.raytrace_spheres_buffer_resource_view) self.raytrace_spheres_buffer_resource_view->Release();
+	if (self.raytrace_materials_buffer) self.raytrace_materials_buffer->Release();
+	if (self.raytrace_materials_buffer_resource_view) self.raytrace_materials_buffer_resource_view->Release();
 	self.context->Release();
 	self.device->Release();
 	self.adapter->Release();
