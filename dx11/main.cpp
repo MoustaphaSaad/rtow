@@ -315,6 +315,7 @@ struct Sphere
 {
 	float3 center;
 	float radius;
+	int mat_index;
 };
 
 struct Hit_Record
@@ -341,9 +342,22 @@ struct Random_Series
 	uint state;
 };
 
+#define Material_Kind_Lambertian 0
+#define Material_Kind_Metal 1
+#define Material_Kind_Dielectric 2
+
+struct Material
+{
+	int kind;
+	float3 albedo;
+	float fuzz;
+	float ir;
+};
+
 RWTexture2D<float4> output: register(u0);
 
 StructuredBuffer<Sphere> spheres: register(t1);
+StructuredBuffer<Material> materials: register(t2);
 
 static const float pi = 3.1415926535897932385;
 
@@ -458,7 +472,7 @@ bool sphere_hit(Sphere sphere, Ray r, float t_min, float t_max, out Hit_Record r
 	float3 outward_normal = (rec.p - sphere.center) / sphere.radius;
 	rec.front_face = dot(r.dir, outward_normal) < 0;
 	rec.normal = rec.front_face ? outward_normal : -outward_normal;
-	rec.mat_index = 0;
+	rec.mat_index = sphere.mat_index;
 	return true;
 }
 
@@ -487,7 +501,8 @@ float3 ray_color(Ray r, uint spheres_count)
 
 	if (world_hit(r, 0.001, 1.#INF, rec, spheres_count))
 	{
-		return float3(1, 0, 0);
+		float3 albedo = materials[rec.mat_index].albedo;
+		return albedo;
 	}
 
 	float3 unit_direction = normalize(r.dir);
