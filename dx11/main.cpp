@@ -82,8 +82,8 @@ Material metal(float r, float g, float b, float f)
 	Material self{};
 	self.kind = Material::KIND_METAL;
 	self.albedo[0] = r;
-	self.albedo[1] = r;
-	self.albedo[2] = r;
+	self.albedo[1] = g;
+	self.albedo[2] = b;
 	self.fuzz = f;
 	return self;
 }
@@ -248,7 +248,7 @@ World random_scene()
 	auto material2 = world_push(world, lambertian(0.4, 0.2, 0.1));
 	world.spheres.push_back(Sphere{-4, 1, 0, 1, material2});
 
-	auto material3 = world_push(world, lambertian(0.7, 0.6, 0.5));
+	auto material3 = world_push(world, metal(0.7, 0.6, 0.5, 0.0));
 	world.spheres.push_back(Sphere{4, 1, 0, 1, material3});
 
 	return world;
@@ -579,19 +579,34 @@ bool material_scatter(Material mat, Ray r, Hit_Record rec, out float3 attenuatio
 
 float3 ray_color(Ray r, uint spheres_count, inout uint series)
 {
-	Hit_Record rec;
-
-	if (world_hit(r, 0.001, 1.#INF, rec, spheres_count))
+	float3 res_attenuation = float3(1, 1, 1);
+	bool res_valid = false;
+	for (int depth = 0; depth < 10; ++depth)
 	{
-		Ray scattered;
-		float3 attenuation;
-		Material mat = materials[rec.mat_index];
-		if (material_scatter(mat, r, rec, attenuation, scattered, series))
+		Hit_Record rec;
+
+		if (world_hit(r, 0.001, 1.#INF, rec, spheres_count))
 		{
-			return attenuation;
+			res_valid = true;
+
+			Ray scattered;
+			float3 attenuation;
+			Material mat = materials[rec.mat_index];
+			if (material_scatter(mat, r, rec, attenuation, scattered, series))
+			{
+				r = scattered;
+				res_attenuation *= attenuation;
+			}
+			else
+			{
+				res_attenuation *= float3(0, 0, 0);
+				break;
+			}
 		}
-		return float3(0, 0, 0);
 	}
+
+	if (res_valid)
+		return res_attenuation;
 
 	float3 unit_direction = normalize(r.dir);
 	float t = 0.5 * (unit_direction.y + 1.0);

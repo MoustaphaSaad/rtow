@@ -249,7 +249,7 @@ int main()
 
 	// World
 	random_series global_random_series{42};
-	auto world = aras_scene(&global_random_series);
+	auto world = random_scene(&global_random_series);
 
 	// Camera
 	point3 lookfrom(13, 2, 3);
@@ -257,8 +257,8 @@ int main()
 	vec3 vup(0, 1, 0);
 	auto dist_to_focus = 10;
 	auto aperture = 0.1;
-	// camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
-	camera cam(point3(0, 2, 3), point3(0, 0, 0), vec3(0, 1, 0), 60, aspect_ratio, aperture, 3);
+	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+	// camera cam(point3(0, 2, 3), point3(0, 0, 0), vec3(0, 1, 0), 60, aspect_ratio, aperture, 3);
 
 	image img{image_width, image_height};
 
