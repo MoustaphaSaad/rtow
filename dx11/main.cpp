@@ -389,6 +389,28 @@ float3 random_in_unit_disk(inout uint series)
 	return float3(xy, 0);
 }
 
+float3 random_unit_vector(inout uint series)
+{
+	float z = random_double_in_range(series, -1, 1);
+	float a = random_double_in_range(series, 0, 2 * pi);
+	float r = sqrt(1.0 - z * z);
+	float x = r * cos(a);
+	float y = r * sin(a);
+	return float3(x, y, z);
+}
+
+float3 random_in_unit_sphere(inout uint series)
+{
+	float z = random_double_in_range(series, -1, 1);
+	float t = random_double_in_range(series, 0, 2 * pi);
+	float r = sqrt(max(0, 1 - z * z));
+	float x = r * cos(t);
+	float y = r * sin(t);
+	float3 res = float3(x, y, z);
+	res *= pow(random_double(series), 1.0 / 3.0);
+	return res;
+}
+
 float degrees_to_radians(float degrees)
 {
 	return degrees * pi / 180.0;
@@ -495,14 +517,80 @@ bool world_hit(Ray r, float t_min, float t_max, inout Hit_Record rec, uint spher
 	return hit_anything;
 }
 
-float3 ray_color(Ray r, uint spheres_count)
+float reflectance(float cosine, float ref_idx)
+{
+	float r0 = (1 - ref_idx) / (1 + ref_idx);
+	r0 = r0 * r0;
+	return r0 + (1 - r0) * pow((1 - cosine), 5);
+}
+
+bool material_scatter(Material mat, Ray r, Hit_Record rec, out float3 attenuation, out Ray scattered, inout uint series)
+{
+	switch (mat.kind)
+	{
+	case Material_Kind_Lambertian:
+	{
+		float3 scatter_direction = rec.normal + random_unit_vector(series);
+
+		if (all(abs(scatter_direction) < float3(1e-8, 1e-8, 1e-8)))
+			scatter_direction = rec.normal;
+
+		scattered.origin = rec.p;
+		scattered.dir = scatter_direction;
+		attenuation = mat.albedo;
+		return true;
+	}
+	case Material_Kind_Metal:
+	{
+		float3 reflected = reflect(unit_vector(r.dir), rec.normal);
+		scattered.origin = rec.p;
+		scattered.dir = reflected + mat.fuzz * random_in_unit_sphere(series);
+		attenuation = mat.albedo;
+		return dot(scattered.dir, rec.normal) > 0;
+	}
+	case Material_Kind_Dielectric:
+	{
+		attenuation = float3(1, 1, 1);
+		float refraction_ratio = rec.front_face ? 1.0/mat.ir : mat.ir;
+
+		float3 unit_direction = unit_vector(r.dir);
+		float cos_theta = min(dot(-unit_direction, rec.normal), 1.0);
+		float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+
+		bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+		float3 direction = float3(0, 0, 0);
+
+		if (cannot_refract || reflectance(cos_theta, refraction_ratio) > random_double(series))
+			direction = reflect(unit_direction, rec.normal);
+		else
+			direction = refract(unit_direction, rec.normal, refraction_ratio);
+
+		scattered.origin = rec.p;
+		scattered.dir = direction;
+		return true;
+	}
+	default:
+		scattered.origin = float3(0, 0, 0);
+		scattered.dir = float3(0, 0, 0);
+		attenuation = float3(0, 0, 0);
+		return false;
+	}
+}
+
+float3 ray_color(Ray r, uint spheres_count, inout uint series)
 {
 	Hit_Record rec;
 
 	if (world_hit(r, 0.001, 1.#INF, rec, spheres_count))
 	{
-		float3 albedo = materials[rec.mat_index].albedo;
-		return albedo;
+		Ray scattered;
+		float3 attenuation;
+		Material mat = materials[rec.mat_index];
+		if (material_scatter(mat, r, rec, attenuation, scattered, series))
+		{
+			return attenuation;
+		}
+		return float3(0, 0, 0);
 	}
 
 	float3 unit_direction = normalize(r.dir);
@@ -539,7 +627,7 @@ void main(uint3 DTid: SV_DispatchThreadID)
 		float u = (DTid.x + random_double(random_series)) / (image_width - 1);
 		float v = (DTid.y + random_double(random_series)) / (image_height - 1);
 		Ray ray = camera_get_ray(cam, random_series, u, v);
-		color += ray_color(ray, spheres_count);
+		color += ray_color(ray, spheres_count, random_series);
 	}
 	float scale = 1.0 / samples_per_pixel;
 	output[DTid.xy] = float4(sqrt(color * scale), 1);
