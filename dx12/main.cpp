@@ -55,6 +55,7 @@ struct Renderer
 	IDXGISwapChain3* swapchain;
 	ID3D12DescriptorHeap* rtv_heap;
 	UINT rtv_descriptor_size;
+	ID3D12Resource* render_targets[2];
 	bool ready;
 };
 
@@ -186,6 +187,8 @@ void renderer_free(Renderer& self)
 	self.fence->Release();
 	self.swapchain->Release();
 	self.rtv_heap->Release();
+	for (auto& render_target : self.render_targets)
+		render_target->Release();
 }
 
 void renderer_setup_resource(Renderer& self, Window& window)
@@ -230,6 +233,15 @@ void renderer_setup_resource(Renderer& self, Window& window)
 		check_result(res, "CreateDescriptorHeap failed");
 
 		self.rtv_descriptor_size = self.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+		auto rtv_handle = self.rtv_heap->GetCPUDescriptorHandleForHeapStart();
+		for (UINT i = 0; i < 2; ++i)
+		{
+			auto res = self.swapchain->GetBuffer(i, IID_PPV_ARGS(&self.render_targets[i]));
+			check_result(res, "GetBuffer failed");
+			self.device->CreateRenderTargetView(self.render_targets[i], nullptr, rtv_handle);
+			rtv_handle.ptr += self.rtv_descriptor_size;
+		}
 	}
 
 	self.ready = true;
