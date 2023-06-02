@@ -47,6 +47,13 @@ struct Renderer
 	IDXGIFactory4* factory;
 	ID3D12Device* device;
 	ID3D12CommandQueue* command_queue;
+	ID3D12CommandAllocator* command_allocator;
+	UINT frame_index;
+	HANDLE fence_event;
+	ID3D12Fence* fence;
+	UINT64 fence_value;
+	IDXGISwapChain3* swapchain;
+	bool ready;
 };
 
 Renderer renderer;
@@ -153,6 +160,18 @@ Renderer renderer_new()
 		check_result(res, "CreateCommandQueue failed");
 	}
 
+	// Create Command Allocator
+	{
+		auto res = self.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&self.command_allocator));
+		check_result(res, "CreateCommandAllocator failed");
+	}
+
+	// Create Fence
+	{
+		auto res = self.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&self.fence));
+		check_result(res, "CreateFence failed");
+	}
+
 	return self;
 }
 
@@ -161,6 +180,41 @@ void renderer_free(Renderer& self)
 	self.device->Release();
 	self.factory->Release();
 	self.command_queue->Release();
+	self.command_allocator->Release();
+	self.fence->Release();
+	self.swapchain->Release();
+}
+
+void renderer_setup_resource(Renderer& self, Window& window)
+{
+	// Create swapchain
+	{
+		DXGI_SWAP_CHAIN_DESC1 desc{};
+		desc.BufferCount = 2;
+		desc.Width = window.width;
+		desc.Height = window.height;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		desc.SampleDesc.Count = 1;
+
+		IDXGISwapChain1* swapchain;
+		auto res = self.factory->CreateSwapChainForHwnd(
+			self.command_queue,
+			window.handle,
+			&desc,
+			nullptr,
+			nullptr,
+			&swapchain
+		);
+		check_result(res, "CreateSwapChainForHwnd failed");
+
+		res = swapchain->QueryInterface(IID_PPV_ARGS(&self.swapchain));
+		check_result(res, "QueryInterface failed");
+
+		self.frame_index = self.swapchain->GetCurrentBackBufferIndex();
+	}
+	self.ready = true;
 }
 
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
