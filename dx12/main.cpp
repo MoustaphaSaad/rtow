@@ -46,6 +46,7 @@ struct Renderer
 {
 	IDXGIFactory4* factory;
 	ID3D12Device* device;
+	ID3D12CommandQueue* command_queue;
 };
 
 Renderer renderer;
@@ -109,11 +110,16 @@ Renderer renderer_new()
 
 	#if defined(_DEBUG)
 	{
-		ID3D12Debug* debugController;
-		auto res = D3D12GetDebugInterface(IID_PPV_ARGS(&debugController));
+		ID3D12Debug* dc;
+		auto res = D3D12GetDebugInterface(IID_PPV_ARGS(&dc));
 		check_result(res, "D3D12GetDebugInterface failed");
 
+		ID3D12Debug1* debugController;
+		res = dc->QueryInterface(IID_PPV_ARGS(&debugController));
+		check_result(res, "QueryInterface failed");
+
 		debugController->EnableDebugLayer();
+		debugController->SetEnableGPUBasedValidation(true);
 		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 		debugController->Release();
 	}
@@ -138,6 +144,15 @@ Renderer renderer_new()
 		check_result(res, "D3D12CreateDevice failed");
 	}
 
+	// Create Command Queue
+	{
+		D3D12_COMMAND_QUEUE_DESC queue_desc{};
+		queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		auto res = self.device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&self.command_queue));
+		check_result(res, "CreateCommandQueue failed");
+	}
+
 	return self;
 }
 
@@ -145,6 +160,7 @@ void renderer_free(Renderer& self)
 {
 	self.device->Release();
 	self.factory->Release();
+	self.command_queue->Release();
 }
 
 LRESULT CALLBACK _window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
