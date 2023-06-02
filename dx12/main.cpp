@@ -53,6 +53,8 @@ struct Renderer
 	ID3D12Fence* fence;
 	UINT64 fence_value;
 	IDXGISwapChain3* swapchain;
+	ID3D12DescriptorHeap* rtv_heap;
+	UINT rtv_descriptor_size;
 	bool ready;
 };
 
@@ -183,6 +185,7 @@ void renderer_free(Renderer& self)
 	self.command_allocator->Release();
 	self.fence->Release();
 	self.swapchain->Release();
+	self.rtv_heap->Release();
 }
 
 void renderer_setup_resource(Renderer& self, Window& window)
@@ -212,8 +215,23 @@ void renderer_setup_resource(Renderer& self, Window& window)
 		res = swapchain->QueryInterface(IID_PPV_ARGS(&self.swapchain));
 		check_result(res, "QueryInterface failed");
 
-		self.frame_index = self.swapchain->GetCurrentBackBufferIndex();
+		self.factory->MakeWindowAssociation(window.handle, DXGI_MWA_NO_ALT_ENTER);
 	}
+
+	self.frame_index = self.swapchain->GetCurrentBackBufferIndex();
+
+	// Create Descriptor Heaps
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc{};
+		rtv_heap_desc.NumDescriptors = 2;
+		rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		auto res = self.device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&self.rtv_heap));
+		check_result(res, "CreateDescriptorHeap failed");
+
+		self.rtv_descriptor_size = self.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	}
+
 	self.ready = true;
 }
 
@@ -295,6 +313,8 @@ int main(int argc, char** argv)
 
 	window_register_class(WINDOW_CLASS);
 	auto window = window_new(WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT, "Ray Tracing in One Weekend");
+
+	renderer_setup_resource(renderer, window);
 
 	MSG msg{};
 	ZeroMemory(&msg, sizeof(msg));
